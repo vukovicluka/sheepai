@@ -14,6 +14,7 @@ const Search = () => {
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState('');
   const [highConfidence, setHighConfidence] = useState(true); // Default to high confidence mode
+  const [searchMode, setSearchMode] = useState('semantic'); // 'semantic' or 'keyword'
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -31,7 +32,9 @@ const Search = () => {
         ...(highConfidence && { highConfidence: 'true' }),
       };
 
-      const data = await articleService.searchArticles(query, params);
+      const data = searchMode === 'semantic'
+        ? await articleService.semanticSearchArticles(query, params)
+        : await articleService.searchArticles(query, params);
       setResults(data.articles || []);
       setPagination(data.pagination);
     } catch (err) {
@@ -54,7 +57,9 @@ const Search = () => {
         ...(highConfidence && { highConfidence: 'true' }),
       };
 
-      const data = await articleService.searchArticles(query, params);
+      const data = searchMode === 'semantic'
+        ? await articleService.semanticSearchArticles(query, params)
+        : await articleService.searchArticles(query, params);
       setResults((prev) => [...prev, ...(data.articles || [])]);
       setPagination(data.pagination);
       setPage((p) => p + 1);
@@ -76,9 +81,20 @@ const Search = () => {
   };
 
   // Calculate relevance scores based on search query or category
+  // For semantic search, use similarity score if available
   const resultsWithRelevance = useMemo(() => {
     if (results.length === 0) return [];
 
+    // If semantic search, articles already have similarity scores
+    if (searchMode === 'semantic' && results.some(a => a.similarity !== undefined)) {
+      // Results are already sorted by similarity from backend
+      return results.map(article => ({
+        ...article,
+        relevanceScore: article.similarity !== undefined ? article.similarity : null,
+      }));
+    }
+
+    // For keyword search, calculate relevance scores
     const relevanceCategory = category || query;
     if (!relevanceCategory || relevanceCategory.trim() === '') {
       return results.map(article => ({ ...article, relevanceScore: null }));
@@ -93,13 +109,24 @@ const Search = () => {
     return articlesWithScores.sort((a, b) => {
       return (b.relevanceScore || 0) - (a.relevanceScore || 0);
     });
-  }, [results, category, query]);
+  }, [results, category, query, searchMode]);
 
-  // Calculate average relevance
+  // Calculate average relevance/similarity
   const avgRelevance = useMemo(() => {
+    if (searchMode === 'semantic' && results.length > 0) {
+      // For semantic search, calculate average similarity
+      const similarities = results
+        .map(a => a.similarity !== undefined ? a.similarity : null)
+        .filter(s => s !== null);
+      if (similarities.length > 0) {
+        const sum = similarities.reduce((acc, s) => acc + s, 0);
+        return Math.round(sum / similarities.length);
+      }
+    }
+    // For keyword search, use existing relevance calculation
     const relevanceCategory = category || query;
     return calculateAverageRelevance(results, relevanceCategory);
-  }, [results, category, query]);
+  }, [results, category, query, searchMode]);
 
   return (
     <div className="search-container">
@@ -111,7 +138,7 @@ const Search = () => {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search articles by title, content, or summary..."
+            placeholder={searchMode === 'semantic' ? 'Search by meaning (e.g., "supply chain attacks")...' : 'Search articles by title, content, or summary...'}
             className="search-input"
           />
           <input
@@ -121,6 +148,28 @@ const Search = () => {
             placeholder="Filter by category (optional)"
             className="category-input"
           />
+          <div className="search-mode-toggle">
+            <label className="radio-label">
+              <input
+                type="radio"
+                name="searchMode"
+                value="semantic"
+                checked={searchMode === 'semantic'}
+                onChange={(e) => setSearchMode(e.target.value)}
+              />
+              <span>Semantic Search</span>
+            </label>
+            <label className="radio-label">
+              <input
+                type="radio"
+                name="searchMode"
+                value="keyword"
+                checked={searchMode === 'keyword'}
+                onChange={(e) => setSearchMode(e.target.value)}
+              />
+              <span>Keyword Search</span>
+            </label>
+          </div>
           <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#00ffff' }}>
             <input
               type="checkbox"
@@ -147,7 +196,7 @@ const Search = () => {
             </p>
             {(category || query) && avgRelevance !== null && (
               <div className="avg-relevance-badge" style={{ '--relevance-color': getRelevanceColor(avgRelevance) }}>
-                Avg Relevance: {avgRelevance}%
+                Avg {searchMode === 'semantic' ? 'Similarity' : 'Relevance'}: {avgRelevance}%
               </div>
             )}
           </div>
@@ -179,7 +228,7 @@ const Search = () => {
                     {relevanceScore !== null && (
                       <div className="relevance-indicator">
                         <div className="relevance-badge" style={{ backgroundColor: relevanceColor, color: '#000' }}>
-                          {relevanceScore}% Match
+                          {searchMode === 'semantic' ? `${relevanceScore}% Similar` : `${relevanceScore}% Match`}
                         </div>
                         <div className="relevance-bar">
                           <div

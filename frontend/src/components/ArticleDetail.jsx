@@ -129,10 +129,7 @@ const ArticleDetail = () => {
         </header>
 
         {article.summary && (
-          <div className="article-summary-section">
-            <h2>Summary</h2>
-            <p className="article-summary">{article.summary}</p>
-          </div>
+          <p className="article-summary">{article.summary}</p>
         )}
 
         {article.tags && article.tags.length > 0 && (

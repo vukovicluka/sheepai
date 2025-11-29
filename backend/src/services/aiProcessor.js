@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import logger from '../utils/logger.js';
 import credibilityService from './credibilityService.js';
+import embeddingService from './embeddingService.js';
 
 // Lazy initialization of AI client (supports both OpenAI and LM Studio)
 let aiClient = null;
@@ -113,6 +114,23 @@ Please format your response as JSON:
       logger.warn('Error assessing credibility, continuing without score:', credError.message);
     }
 
+    // Generate embedding for the article
+    let embedding = null;
+    try {
+      const articleWithData = {
+        ...article,
+        title: article.title || '',
+        summary: parsedResponse.summary || '',
+        tags: Array.isArray(parsedResponse.tags) ? parsedResponse.tags : [],
+      };
+      embedding = await embeddingService.generateArticleEmbedding(articleWithData);
+      if (embedding) {
+        logger.debug(`Generated embedding for article: ${article.title}`);
+      }
+    } catch (embedError) {
+      logger.warn('Error generating embedding, continuing without embedding:', embedError.message);
+    }
+
     return {
       summary: parsedResponse.summary || '',
       keyPoints: Array.isArray(parsedResponse.keyPoints) ? parsedResponse.keyPoints : [],
@@ -121,22 +139,32 @@ Please format your response as JSON:
         ? parsedResponse.sentiment.toLowerCase()
         : 'neutral',
       credibilityScore,
+      embedding,
     };
   } catch (error) {
     logger.error('Error processing article with AI:', error.message);
-    // Return default values on error, but still try to assess credibility
+    // Return default values on error, but still try to assess credibility and generate embedding
     let credibilityScore = null;
     try {
       credibilityScore = await credibilityService.assessCredibility(article);
     } catch (credError) {
       // Ignore credibility errors if main processing failed
     }
+
+    let embedding = null;
+    try {
+      embedding = await embeddingService.generateArticleEmbedding(article);
+    } catch (embedError) {
+      // Ignore embedding errors if main processing failed
+    }
+
     return {
       summary: '',
       keyPoints: [],
       tags: [],
       sentiment: 'neutral',
       credibilityScore,
+      embedding,
     };
   }
 };
@@ -161,13 +189,21 @@ const processArticles = async (articles) => {
     } catch (error) {
       logger.error(`Error processing article "${article.title}":`, error.message);
       // Continue with next article even if one fails
-      // Still try to assess credibility
+      // Still try to assess credibility and generate embedding
       let credibilityScore = null;
       try {
         credibilityScore = await credibilityService.assessCredibility(article);
       } catch (credError) {
         // Ignore credibility errors
       }
+
+      let embedding = null;
+      try {
+        embedding = await embeddingService.generateArticleEmbedding(article);
+      } catch (embedError) {
+        // Ignore embedding errors
+      }
+
       processedArticles.push({
         ...article,
         summary: '',
@@ -175,6 +211,7 @@ const processArticles = async (articles) => {
         tags: [],
         sentiment: 'neutral',
         credibilityScore,
+        embedding,
         processedAt: new Date(),
       });
     }

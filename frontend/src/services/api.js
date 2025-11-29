@@ -28,7 +28,7 @@ export const articleService = {
     return response.data;
   },
 
-  // Search articles
+  // Search articles (keyword-based)
   searchArticles: async (query, params = {}) => {
     const response = await api.get('/api/articles/search', {
       params: { q: query, ...params },
@@ -36,9 +36,11 @@ export const articleService = {
     return response.data;
   },
 
-  // Get statistics
-  getStats: async (params = {}) => {
-    const response = await api.get('/api/articles/stats', { params });
+  // Semantic search articles (vector-based)
+  semanticSearchArticles: async (query, params = {}) => {
+    const response = await api.get('/api/articles/semantic-search', {
+      params: { q: query, ...params },
+    });
     return response.data;
   },
 

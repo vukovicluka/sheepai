@@ -258,7 +258,7 @@ const ArticleList = ({ latest = false }) => {
               </div>
 
               {article.summary && (
-                <p className="article-summary">{article.summary}</p>
+                <p className="article-summary">SIR</p>
               )}
             </Link>
           );

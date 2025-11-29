@@ -31,11 +31,26 @@ const validateSignup = [
     .withMessage('Please provide a valid email address')
     .normalizeEmail(),
   body('category')
+    .optional({ checkFalsy: true })
     .trim()
     .notEmpty()
-    .withMessage('Category is required')
+    .withMessage('Category must not be empty if provided')
     .isLength({ min: 1, max: 100 })
     .withMessage('Category must be between 1 and 100 characters'),
+  body('semanticQuery')
+    .optional({ checkFalsy: true })
+    .trim()
+    .notEmpty()
+    .withMessage('Semantic query must not be empty if provided')
+    .isLength({ min: 3, max: 200 })
+    .withMessage('Semantic query must be between 3 and 200 characters'),
+  body().custom((value) => {
+    // At least one of category or semanticQuery must be provided
+    if ((!value.category || !value.category.trim()) && (!value.semanticQuery || !value.semanticQuery.trim())) {
+      throw new Error('Either category or semantic query must be provided');
+    }
+    return true;
+  }),
   handleValidationErrors,
 ];
 

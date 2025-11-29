@@ -8,6 +8,7 @@ const Signup = () => {
   const [formData, setFormData] = useState({
     email: '',
     category: '',
+    semanticQuery: '',
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -40,11 +41,20 @@ const Signup = () => {
       newErrors.email = 'Please enter a valid email address';
     }
 
-    // Category validation
-    if (!formData.category.trim()) {
-      newErrors.category = 'Category is required';
-    } else if (formData.category.trim().length < 2) {
-      newErrors.category = 'Category must be at least 2 characters';
+    // Category or semantic query validation (at least one required)
+    const hasCategory = formData.category.trim().length > 0;
+    const hasSemanticQuery = formData.semanticQuery.trim().length > 0;
+
+    if (!hasCategory && !hasSemanticQuery) {
+      newErrors.category = 'Either category or semantic query is required';
+      newErrors.semanticQuery = 'Either category or semantic query is required';
+    } else {
+      if (hasCategory && formData.category.trim().length < 2) {
+        newErrors.category = 'Category must be at least 2 characters';
+      }
+      if (hasSemanticQuery && formData.semanticQuery.trim().length < 3) {
+        newErrors.semanticQuery = 'Semantic query must be at least 3 characters';
+      }
     }
 
     setErrors(newErrors);
@@ -62,13 +72,22 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      const response = await userService.signup({
+      const signupData = {
         email: formData.email.trim(),
-        category: formData.category.trim(),
-      });
+      };
+
+      if (formData.category.trim()) {
+        signupData.category = formData.category.trim();
+      }
+
+      if (formData.semanticQuery.trim()) {
+        signupData.semanticQuery = formData.semanticQuery.trim();
+      }
+
+      const response = await userService.signup(signupData);
 
       setSuccess(true);
-      setFormData({ email: '', category: '' });
+      setFormData({ email: '', category: '', semanticQuery: '' });
 
       // Redirect to home after 2 seconds
       setTimeout(() => {
@@ -84,6 +103,8 @@ const Signup = () => {
               backendErrors.email = detail.message;
             } else if (detail.field === 'category') {
               backendErrors.category = detail.message;
+            } else if (detail.field === 'semanticQuery') {
+              backendErrors.semanticQuery = detail.message;
             }
           });
           setErrors(backendErrors);
@@ -146,7 +167,7 @@ const Signup = () => {
 
             <div className="form-group">
               <label htmlFor="category">
-                Category of Interest <span className="required">*</span>
+                Category of Interest (Keyword-based)
               </label>
               <input
                 type="text"
@@ -163,6 +184,34 @@ const Signup = () => {
               )}
               <small className="help-text">
                 Enter a keyword or topic you're interested in. We'll notify you when articles match this category.
+              </small>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="semanticQuery">
+                Semantic Query (Meaning-based)
+              </label>
+              <input
+                type="text"
+                id="semanticQuery"
+                name="semanticQuery"
+                value={formData.semanticQuery}
+                onChange={handleChange}
+                placeholder="e.g., supply chain attacks, zero-day vulnerabilities"
+                className={errors.semanticQuery ? 'input-error' : ''}
+                disabled={loading}
+              />
+              {errors.semanticQuery && (
+                <span className="error-text">{errors.semanticQuery}</span>
+              )}
+              <small className="help-text">
+                Enter a natural language query describing what you're interested in. We'll use semantic search to find articles matching the meaning, not just keywords.
+              </small>
+            </div>
+
+            <div className="form-group">
+              <small className="help-text" style={{ color: '#00ffff', fontStyle: 'italic' }}>
+                <strong>Note:</strong> You can provide either a category keyword, a semantic query, or both. At least one is required.
               </small>
             </div>
 

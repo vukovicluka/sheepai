@@ -5,6 +5,7 @@ import {
   getArticleById,
   getLatestArticles,
   searchArticles,
+  semanticSearchArticles,
   getStats,
   getTags,
 } from '../controllers/articleController.js';
@@ -53,6 +54,7 @@ const validateStats = [
 router.get('/', validatePagination, getArticles);
 router.get('/latest', validatePagination, getLatestArticles);
 router.get('/search', validateSearch, searchArticles);
+router.get('/semantic-search', validateSearch, semanticSearchArticles);
 router.get('/stats', validateStats, getStats);
 router.get('/tags', getTags);
 router.get('/:id', validateId, getArticleById);

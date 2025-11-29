@@ -61,6 +61,11 @@ const articleSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    embedding: {
+      type: [Number],
+      default: null,
+      select: false, // Don't include by default in queries (saves bandwidth)
+    },
   },
   {
     timestamps: true,

@@ -6,7 +6,15 @@ import logger from '../utils/logger.js';
  */
 export const signup = async (req, res) => {
   try {
-    const { email, category } = req.body;
+    const { email, category, semanticQuery } = req.body;
+
+    // Validate that at least one of category or semanticQuery is provided
+    if ((!category || !category.trim()) && (!semanticQuery || !semanticQuery.trim())) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Either category or semantic query must be provided',
+      });
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
@@ -18,14 +26,22 @@ export const signup = async (req, res) => {
     }
 
     // Create new user
-    const user = new User({
+    const userData = {
       email: email.toLowerCase().trim(),
-      category: category.trim(),
-    });
+    };
 
+    if (category && category.trim()) {
+      userData.category = category.trim();
+    }
+
+    if (semanticQuery && semanticQuery.trim()) {
+      userData.semanticQuery = semanticQuery.trim();
+    }
+
+    const user = new User(userData);
     await user.save();
 
-    logger.info(`New user signed up: ${user.email} with category: ${user.category}`);
+    logger.info(`New user signed up: ${user.email} with category: ${user.category || 'N/A'}, semanticQuery: ${user.semanticQuery || 'N/A'}`);
 
     res.status(201).json({
       message: 'User created successfully',
@@ -33,6 +49,7 @@ export const signup = async (req, res) => {
         id: user._id,
         email: user.email,
         category: user.category,
+        semanticQuery: user.semanticQuery,
         createdAt: user.createdAt,
       },
     });

@@ -63,7 +63,7 @@ app.use((req, res) => {
 const createDefaultUser = async () => {
   try {
     const defaultEmail = 'luka.vukovic@mithril.eu';
-    const defaultCategory = 'ransomware';
+    const defaultCategory = 'malware';
 
     const existingUser = await User.findOne({ email: defaultEmail });
 

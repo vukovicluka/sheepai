@@ -17,9 +17,18 @@ const userSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      required: true,
+      required: function() {
+        return !this.semanticQuery || !this.semanticQuery.trim();
+      },
       trim: true,
       index: true,
+    },
+    semanticQuery: {
+      type: String,
+      required: function() {
+        return !this.category || !this.category.trim();
+      },
+      trim: true,
     },
     minCredibility: {
       type: Number,

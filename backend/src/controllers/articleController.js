@@ -1,5 +1,6 @@
 import Article from '../models/Article.js';
 import logger from '../utils/logger.js';
+import embeddingService from '../services/embeddingService.js';
 
 /**
  * Helper function to build category filter
@@ -227,6 +228,123 @@ export const searchArticles = async (req, res) => {
   } catch (error) {
     logger.error('Error searching articles:', error.message);
     res.status(500).json({ error: 'Failed to search articles' });
+  }
+};
+
+/**
+ * Semantic search articles using vector embeddings
+ */
+export const semanticSearchArticles = async (req, res) => {
+  try {
+    const query = req.query.q;
+
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    // Check if semantic search is enabled
+    const semanticSearchEnabled = process.env.ENABLE_SEMANTIC_SEARCH !== 'false';
+    if (!semanticSearchEnabled) {
+      // Fallback to keyword search
+      return searchArticles(req, res);
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Generate embedding for the search query
+    let queryEmbedding;
+    try {
+      queryEmbedding = await embeddingService.generateEmbedding(query);
+      if (!queryEmbedding) {
+        logger.warn('Failed to generate query embedding, falling back to keyword search');
+        return searchArticles(req, res);
+      }
+    } catch (embedError) {
+      logger.error('Error generating query embedding:', embedError.message);
+      return searchArticles(req, res);
+    }
+
+    // Build filter for articles with embeddings
+    const filter = {
+      embedding: { $exists: true, $ne: null },
+    };
+
+    // Add category filter if provided
+    if (req.query.category) {
+      Object.assign(filter, buildCategoryFilter(req.query.category));
+    }
+
+    // Add credibility threshold filter
+    if (req.query.minCredibility !== undefined) {
+      const minCred = parseInt(req.query.minCredibility);
+      if (!isNaN(minCred)) {
+        filter.credibilityScore = { $gte: minCred };
+      }
+    } else if (req.query.highConfidence === 'true' || req.query.highConfidence === '1') {
+      const defaultThreshold = parseInt(process.env.MIN_CREDIBILITY_THRESHOLD) || 70;
+      filter.credibilityScore = { $gte: defaultThreshold };
+    }
+
+    // Get all articles with embeddings (we need to calculate similarity)
+    const articles = await Article.find(filter)
+      .select('+embedding') // Include embedding field
+      .lean();
+
+    if (articles.length === 0) {
+      return res.json({
+        articles: [],
+        query,
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          pages: 0,
+        },
+      });
+    }
+
+    // Calculate similarity scores for all articles
+    const articlesWithSimilarity = articles.map(article => {
+      if (!article.embedding || article.embedding.length === 0) {
+        return { ...article, similarity: 0 };
+      }
+
+      const similarity = embeddingService.cosineSimilarity(queryEmbedding, article.embedding);
+      // Convert similarity (-1 to 1) to percentage (0 to 100)
+      const similarityScore = Math.round((similarity + 1) * 50);
+
+      return {
+        ...article,
+        similarity: similarityScore,
+      };
+    });
+
+    // Sort by similarity (highest first)
+    articlesWithSimilarity.sort((a, b) => b.similarity - a.similarity);
+
+    // Apply pagination
+    const total = articlesWithSimilarity.length;
+    const paginatedArticles = articlesWithSimilarity.slice(skip, skip + limit);
+
+    // Remove embedding from response (not needed in frontend)
+    const articlesWithoutEmbedding = paginatedArticles.map(({ embedding, ...article }) => article);
+
+    res.json({
+      articles: articlesWithoutEmbedding,
+      query,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    logger.error('Error in semantic search:', error.message);
+    // Fallback to keyword search on error
+    return searchArticles(req, res);
   }
 };
 

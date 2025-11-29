@@ -302,7 +302,7 @@ const getCredibilityIcon = (score) => {
 /**
  * Sends a batch email notification to a user with multiple articles
  */
-const sendBatchArticleNotification = async (userEmail, articles, userCategory, user = null) => {
+const sendBatchArticleNotification = async (userEmail, articles, userCategory = '', user = null, semanticQuery = null) => {
   try {
     const emailTransporter = getTransporter();
 
@@ -316,10 +316,22 @@ const sendBatchArticleNotification = async (userEmail, articles, userCategory, u
     }
 
     // Calculate relevance scores and sort articles by relevance (highest first)
-    const articlesWithScores = articles.map(article => ({
-      ...article,
-      relevanceScore: calculateRelevanceScore(article, userCategory),
-    })).sort((a, b) => b.relevanceScore - a.relevanceScore);
+    // For semantic queries, use similarity score if available
+    const articlesWithScores = articles.map(article => {
+      if (semanticQuery && article.similarity !== undefined) {
+        // Use similarity score for semantic queries
+        return {
+          ...article,
+          relevanceScore: article.similarity,
+        };
+      } else {
+        // Use keyword-based relevance for category matching
+        return {
+          ...article,
+          relevanceScore: calculateRelevanceScore(article, userCategory || semanticQuery || ''),
+        };
+      }
+    }).sort((a, b) => b.relevanceScore - a.relevanceScore);
 
     const articleCount = articles.length;
     const subject = articleCount === 1
@@ -452,9 +464,13 @@ ${index + 1}. ${articleTitle}
       : null;
 
     // Get user's credibility threshold for warning message
-    const userThreshold = user?.minCredibility !== null && user?.minCredibility !== undefined
-      ? user.minCredibility
-      : (parseInt(process.env.MIN_CREDIBILITY_THRESHOLD) || 70);
+    let userThreshold = parseInt(process.env.MIN_CREDIBILITY_THRESHOLD) || 70;
+    if (user && typeof user === 'object' && 'minCredibility' in user) {
+      const userMinCred = user.minCredibility;
+      if (userMinCred !== null && userMinCred !== undefined) {
+        userThreshold = userMinCred;
+      }
+    }
 
     // Check if any articles have low credibility
     const hasLowCredibilityArticles = articlesWithScores.some(a =>
@@ -586,13 +602,13 @@ ${index + 1}. ${articleTitle}
               <div class="header-stats">
                 <div class="stat-item">${articleCount} Article${articleCount === 1 ? '' : 's'}</div>
                 <div class="stat-item">${avgRelevance}% Avg Match</div>
-                <div class="stat-item">${userCategory}</div>
+                <div class="stat-item">${semanticQuery || (userCategory || 'Your Interests')}</div>
               </div>
             </div>
             <div class="content">
               <div class="intro">
                 <h2>Hello! 👋</h2>
-                <p>We found <strong style="color: #667eea;">${articleCount}</strong> new article${articleCount === 1 ? '' : 's'} matching your interest in "<strong style="color: #764ba2;">${userCategory}</strong>"!</p>
+                <p>We found <strong style="color: #667eea;">${articleCount}</strong> new article${articleCount === 1 ? '' : 's'} matching your interest${semanticQuery ? ' in "<strong style="color: #764ba2;">' + semanticQuery + '</strong>"' : ' in "<strong style="color: #764ba2;">' + (userCategory || 'your interests') + '</strong>"'}!</p>
                 <p style="font-size: 13px; margin-top: 12px; color: #000;">Articles are sorted by relevance to help you prioritize your reading.</p>
                 <div class="relevance-badge">Average Relevance: ${avgRelevance}%</div>
                 ${avgCredibility !== null ? `<div class="relevance-badge" style="background: ${getCredibilityColor(avgCredibility)}; color: #000 !important; margin-top: 8px;">Average Credibility: ${avgCredibility}%</div>` : ''}
@@ -604,7 +620,7 @@ ${index + 1}. ${articleTitle}
             </div>
             <div class="footer">
               <p><strong>CyberPulse</strong> - Automated Article Discovery</p>
-              <p>You're receiving this because you subscribed to articles in the "<strong>${userCategory}</strong>" category.</p>
+              <p>You're receiving this because you subscribed to articles${semanticQuery ? ' matching: "<strong>' + semanticQuery + '</strong>"' : ' in the "<strong>' + (userCategory || 'your interests') + '</strong>" category'}.</p>
               <p style="margin-top: 10px; font-size: 11px; color: #aaa;">Articles sorted by relevance score • Color coding indicates match quality</p>
             </div>
           </div>
@@ -664,26 +680,84 @@ const notifyUsersAboutBatchArticles = async (articles) => {
     // Group articles by matching users
     const userArticleMap = new Map(); // Map<userEmail, {user, articles: []}>
 
+    // Import embedding service for semantic matching
+    const embeddingService = (await import('./embeddingService.js')).default;
+
     for (const user of users) {
       const categoryLower = user.category?.toLowerCase().trim();
-      if (!categoryLower) continue;
+      const semanticQuery = user.semanticQuery?.trim();
+
+      // Skip if user has neither category nor semantic query
+      if (!categoryLower && !semanticQuery) continue;
 
       // Get user's credibility threshold (use system default if not set)
-      const userThreshold = user.minCredibility !== null && user.minCredibility !== undefined
+      const userThreshold = (user && user.minCredibility !== null && user.minCredibility !== undefined)
         ? user.minCredibility
         : (parseInt(process.env.MIN_CREDIBILITY_THRESHOLD) || 70);
 
-      const matchingArticles = articles.filter(article => {
-        const articleText = `${article.title || ''} ${article.content || ''}`.toLowerCase();
-        const matchesCategory = articleText.includes(categoryLower);
+      let matchingArticles;
 
-        // Filter by credibility threshold
-        const meetsCredibilityThreshold = article.credibilityScore === null ||
-          article.credibilityScore === undefined ||
-          article.credibilityScore >= userThreshold;
+      if (semanticQuery) {
+        // Use semantic search for matching
+        try {
+          // Generate embedding for user's semantic query
+          const queryEmbedding = await embeddingService.generateEmbedding(semanticQuery);
 
-        return matchesCategory && meetsCredibilityThreshold;
-      });
+          if (queryEmbedding) {
+            // Get articles with embeddings
+            const articlesWithEmbeddings = articles.filter(a => a.embedding && a.embedding.length > 0);
+
+            // Calculate similarity for each article
+            const articlesWithSimilarity = articlesWithEmbeddings.map(article => {
+              const similarity = embeddingService.cosineSimilarity(queryEmbedding, article.embedding);
+              const similarityScore = Math.round((similarity + 1) * 50); // Convert to 0-100
+              return { ...article, similarity: similarityScore };
+            });
+
+            // Filter by similarity threshold (e.g., >= 50% similarity) and credibility
+            matchingArticles = articlesWithSimilarity
+              .filter(article => {
+                const meetsSimilarityThreshold = article.similarity >= 50; // Minimum 50% similarity
+                const meetsCredibilityThreshold = article.credibilityScore === null ||
+                  article.credibilityScore === undefined ||
+                  article.credibilityScore >= userThreshold;
+                return meetsSimilarityThreshold && meetsCredibilityThreshold;
+              })
+              .sort((a, b) => b.similarity - a.similarity); // Sort by similarity
+          } else {
+            // Fallback to keyword search if embedding generation fails
+            matchingArticles = articles.filter(article => {
+              const articleText = `${article.title || ''} ${article.content || ''} ${article.summary || ''}`.toLowerCase();
+              const matchesQuery = articleText.includes(semanticQuery.toLowerCase());
+              const meetsCredibilityThreshold = article.credibilityScore === null ||
+                article.credibilityScore === undefined ||
+                article.credibilityScore >= userThreshold;
+              return matchesQuery && meetsCredibilityThreshold;
+            });
+          }
+        } catch (error) {
+          logger.warn(`Error in semantic matching for user ${user.email}:`, error.message);
+          // Fallback to keyword search
+          matchingArticles = articles.filter(article => {
+            const articleText = `${article.title || ''} ${article.content || ''} ${article.summary || ''}`.toLowerCase();
+            const matchesQuery = articleText.includes(semanticQuery.toLowerCase());
+            const meetsCredibilityThreshold = article.credibilityScore === null ||
+              article.credibilityScore === undefined ||
+              article.credibilityScore >= userThreshold;
+            return matchesQuery && meetsCredibilityThreshold;
+          });
+        }
+      } else {
+        // Use keyword-based category matching
+        matchingArticles = articles.filter(article => {
+          const articleText = `${article.title || ''} ${article.content || ''}`.toLowerCase();
+          const matchesCategory = categoryLower ? articleText.includes(categoryLower) : false;
+          const meetsCredibilityThreshold = article.credibilityScore === null ||
+            article.credibilityScore === undefined ||
+            article.credibilityScore >= userThreshold;
+          return matchesCategory && meetsCredibilityThreshold;
+        });
+      }
 
       if (matchingArticles.length > 0) {
         userArticleMap.set(user.email, {
@@ -702,7 +776,7 @@ const notifyUsersAboutBatchArticles = async (articles) => {
 
     // Send batch emails to all matching users
     const emailPromises = Array.from(userArticleMap.entries()).map(([email, { user, articles: userArticles }]) =>
-      sendBatchArticleNotification(email, userArticles, user.category, user)
+      sendBatchArticleNotification(email, userArticles, user.category || '', user, user.semanticQuery || null)
     );
 
     const results = await Promise.allSettled(emailPromises);

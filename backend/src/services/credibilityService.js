@@ -1,16 +1,27 @@
 import OpenAI from 'openai';
 import logger from '../utils/logger.js';
 
-// Lazy initialization of OpenAI client
-let openai = null;
+// Lazy initialization of AI client (supports both OpenAI and LM Studio)
+let aiClient = null;
 
-const getOpenAIClient = () => {
-  if (!openai && process.env.OPENAI_API_KEY) {
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+const getAIClient = () => {
+  if (!aiClient) {
+    // Check if using local model (LM Studio)
+    if (process.env.USE_LOCAL_MODEL === 'true' || process.env.LM_STUDIO_BASE_URL) {
+      const baseURL = process.env.LM_STUDIO_BASE_URL || 'http://localhost:1234/v1';
+      aiClient = new OpenAI({
+        baseURL: baseURL,
+        apiKey: 'lm-studio', // LM Studio doesn't require a real API key
+      });
+      logger.info(`Using local model (LM Studio) for credibility assessment at ${baseURL}`);
+    } else if (process.env.OPENAI_API_KEY) {
+      aiClient = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+      logger.info('Using OpenAI API for credibility assessment');
+    }
   }
-  return openai;
+  return aiClient;
 };
 
 // Source reliability database
@@ -114,15 +125,9 @@ const assessAuthorCredibility = (author) => {
  */
 const assessCredibility = async (article) => {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      logger.warn('OPENAI_API_KEY not set, using default credibility score');
-      const sourceScore = getSourceReliabilityScore(article.url || '');
-      return Math.round(sourceScore * 5); // Scale 0-20 to 0-100 for default
-    }
-
-    const client = getOpenAIClient();
+    const client = getAIClient();
     if (!client) {
-      logger.warn('OpenAI client not initialized, using default credibility score');
+      logger.warn('AI client not initialized, using default credibility score');
       const sourceScore = getSourceReliabilityScore(article.url || '');
       return Math.round(sourceScore * 5);
     }
@@ -181,7 +186,11 @@ Calculate the overall credibility score as:
 - Citation quality: 15 points (scale 0-100 to 0-15)
 Total AI score: 0-80 points`;
 
-    const model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
+    // Use local model name if specified, otherwise OpenAI model
+    const model = process.env.USE_LOCAL_MODEL === 'true' || process.env.LM_STUDIO_BASE_URL
+      ? (process.env.LOCAL_MODEL_NAME || 'local-model')
+      : (process.env.OPENAI_MODEL || 'gpt-3.5-turbo');
+
     const response = await client.chat.completions.create({
       model: model,
       max_tokens: 600,

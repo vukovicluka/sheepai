@@ -135,16 +135,6 @@ const ArticleDetail = () => {
           </div>
         )}
 
-        {article.content && (
-          <div className="article-content-section">
-            <h2>Content</h2>
-            <div
-              className="article-content"
-              dangerouslySetInnerHTML={{ __html: article.content }}
-            />
-          </div>
-        )}
-
         {article.tags && article.tags.length > 0 && (
           <div className="article-tags-section">
             <h3>Tags</h3>

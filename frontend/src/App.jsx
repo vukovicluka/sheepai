@@ -37,7 +37,7 @@ const App = () => {
         </main>
 
         <footer className="footer">
-          <p>&copy; 2024 CyberPulse - Article Dashboard</p>
+          <p>&copy; 2025 CyberPulse</p>
         </footer>
       </div>
     </Router>

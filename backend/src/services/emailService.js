@@ -194,38 +194,38 @@ const calculateRelevanceScore = (article, userCategory) => {
 
   let score = 0;
 
-  // Exact match in title (highest weight)
+  // Match in tags - check each tag individually (BIGGEST WEIGHT)
+  let tagScore = 0;
+  tags.forEach(tag => {
+    // Exact tag match (highest weight for tags)
+    if (tag === categoryLower) {
+      tagScore += 30;
+    }
+    // Tag contains the category keyword
+    else if (tag.includes(categoryLower)) {
+      tagScore += 20;
+    }
+    // Category keyword contains the tag (partial match)
+    else if (categoryLower.includes(tag) && tag.length > 2) {
+      tagScore += 10;
+    }
+  });
+  // Cap tag score at 50 (biggest weight)
+  score += Math.min(tagScore, 50);
+
+  // Exact match in title
   if (title.includes(categoryLower)) {
-    score += 40;
+    score += 30;
   }
 
   // Exact match in summary
   if (summary.includes(categoryLower)) {
-    score += 30;
+    score += 20;
   }
 
   // Match in content
   const contentMatches = (content.match(new RegExp(categoryLower, 'g')) || []).length;
   score += Math.min(contentMatches * 5, 20);
-
-  // Match in tags - check each tag individually
-  let tagScore = 0;
-  tags.forEach(tag => {
-    // Exact tag match (highest weight for tags)
-    if (tag === categoryLower) {
-      tagScore += 15;
-    }
-    // Tag contains the category keyword
-    else if (tag.includes(categoryLower)) {
-      tagScore += 10;
-    }
-    // Category keyword contains the tag (partial match)
-    else if (categoryLower.includes(tag) && tag.length > 2) {
-      tagScore += 5;
-    }
-  });
-  // Cap tag score at 25 to maintain balance
-  score += Math.min(tagScore, 25);
 
   // Ensure score is between 0-100
   return Math.min(Math.max(score, 0), 100);
@@ -548,7 +548,7 @@ ${index + 1}. ${articleTitle}
             .relevance-badge {
               display: inline-block;
               background: ${avgRelevanceColor};
-              color: white;
+              color: black;
               padding: 6px 14px;
               border-radius: 20px;
               font-size: 12px;
@@ -595,7 +595,7 @@ ${index + 1}. ${articleTitle}
                 <p>We found <strong style="color: #667eea;">${articleCount}</strong> new article${articleCount === 1 ? '' : 's'} matching your interest in "<strong style="color: #764ba2;">${userCategory}</strong>"!</p>
                 <p style="font-size: 13px; margin-top: 12px; color: #000;">Articles are sorted by relevance to help you prioritize your reading.</p>
                 <div class="relevance-badge">Average Relevance: ${avgRelevance}%</div>
-                ${avgCredibility !== null ? `<div class="relevance-badge" style="background: ${getCredibilityColor(avgCredibility)}; margin-top: 8px;">Average Credibility: ${avgCredibility}%</div>` : ''}
+                ${avgCredibility !== null ? `<div class="relevance-badge" style="background: ${getCredibilityColor(avgCredibility)}; color: #000 !important; margin-top: 8px;">Average Credibility: ${avgCredibility}%</div>` : ''}
                 ${hasLowCredibilityArticles ? `<div style="background: rgba(255, 0, 255, 0.2); border: 1px solid #ff00ff; padding: 12px; border-radius: 8px; margin-top: 15px; color: #ff00ff; font-size: 13px; text-shadow: 0 0 5px #ff00ff;">
                   <strong>⚠️ Credibility Filter Active:</strong> Only articles with credibility score ≥ ${userThreshold}% are included. Low-credibility articles have been filtered out to ensure high-quality content.
                 </div>` : ''}

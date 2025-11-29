@@ -13,38 +13,38 @@ export const calculateRelevanceScore = (article, category) => {
 
   let score = 0;
 
-  // Exact match in title (highest weight)
+  // Match in tags - check each tag individually (BIGGEST WEIGHT)
+  let tagScore = 0;
+  tags.forEach(tag => {
+    // Exact tag match (highest weight for tags)
+    if (tag === categoryLower) {
+      tagScore += 30;
+    }
+    // Tag contains the category keyword
+    else if (tag.includes(categoryLower)) {
+      tagScore += 20;
+    }
+    // Category keyword contains the tag (partial match)
+    else if (categoryLower.includes(tag) && tag.length > 2) {
+      tagScore += 10;
+    }
+  });
+  // Cap tag score at 50 (biggest weight)
+  score += Math.min(tagScore, 50);
+
+  // Exact match in title
   if (title.includes(categoryLower)) {
-    score += 40;
+    score += 30;
   }
 
   // Exact match in summary
   if (summary.includes(categoryLower)) {
-    score += 30;
+    score += 20;
   }
 
   // Match in content
   const contentMatches = (content.match(new RegExp(categoryLower, 'g')) || []).length;
   score += Math.min(contentMatches * 5, 20);
-
-  // Match in tags - check each tag individually
-  let tagScore = 0;
-  tags.forEach(tag => {
-    // Exact tag match (highest weight for tags)
-    if (tag === categoryLower) {
-      tagScore += 15;
-    }
-    // Tag contains the category keyword
-    else if (tag.includes(categoryLower)) {
-      tagScore += 10;
-    }
-    // Category keyword contains the tag (partial match)
-    else if (categoryLower.includes(tag) && tag.length > 2) {
-      tagScore += 5;
-    }
-  });
-  // Cap tag score at 25 to maintain balance
-  score += Math.min(tagScore, 25);
 
   // Ensure score is between 0-100
   return Math.min(Math.max(score, 0), 100);

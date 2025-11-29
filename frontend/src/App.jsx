@@ -3,6 +3,7 @@ import ArticleList from './components/ArticleList';
 import ArticleDetail from './components/ArticleDetail';
 import Search from './components/Search';
 import Stats from './components/Stats';
+import Signup from './components/Signup';
 import './App.css';
 
 const App = () => {
@@ -19,6 +20,7 @@ const App = () => {
               <Link to="/latest" className="nav-link">Latest</Link>
               <Link to="/search" className="nav-link">Search</Link>
               <Link to="/stats" className="nav-link">Stats</Link>
+              <Link to="/signup" className="nav-link">Sign Up</Link>
             </div>
           </div>
         </nav>
@@ -30,6 +32,7 @@ const App = () => {
             <Route path="/article/:id" element={<ArticleDetail />} />
             <Route path="/search" element={<Search />} />
             <Route path="/stats" element={<Stats />} />
+            <Route path="/signup" element={<Signup />} />
           </Routes>
         </main>
 

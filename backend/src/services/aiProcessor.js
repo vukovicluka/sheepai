@@ -1,17 +1,25 @@
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import logger from '../utils/logger.js';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Lazy initialization of OpenAI client
+let openai = null;
+
+const getOpenAIClient = () => {
+  if (!openai && process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+};
 
 /**
- * Processes an article through Anthropic Claude API
+ * Processes an article through OpenAI API
  */
 const processArticle = async (article) => {
   try {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      logger.warn('ANTHROPIC_API_KEY not set, skipping AI processing');
+    if (!process.env.OPENAI_API_KEY) {
+      logger.warn('OPENAI_API_KEY not set, skipping AI processing');
       return {
         summary: '',
         keyPoints: [],
@@ -37,8 +45,20 @@ Please format your response as JSON:
   "sentiment": "positive|neutral|negative"
 }`;
 
-    const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+    const client = getOpenAIClient();
+    if (!client) {
+      logger.warn('OpenAI client not initialized, skipping AI processing');
+      return {
+        summary: '',
+        keyPoints: [],
+        tags: [],
+        sentiment: 'neutral',
+      };
+    }
+
+    const model = process.env.OPENAI_MODEL || 'gpt-4';
+    const response = await client.chat.completions.create({
+      model: model,
       max_tokens: 1024,
       messages: [
         {
@@ -48,14 +68,14 @@ Please format your response as JSON:
       ],
     });
 
-    const responseText = message.content[0].text;
+    const responseText = response.choices[0].message.content;
 
     // Try to parse JSON from the response
     let parsedResponse;
     try {
       // Extract JSON from markdown code blocks if present
       const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) ||
-                       responseText.match(/```\s*([\s\S]*?)\s*```/);
+        responseText.match(/```\s*([\s\S]*?)\s*```/);
       const jsonText = jsonMatch ? jsonMatch[1] : responseText;
       parsedResponse = JSON.parse(jsonText);
     } catch (parseError) {
@@ -64,14 +84,14 @@ Please format your response as JSON:
       const lines = responseText.split('\n');
       parsedResponse = {
         summary: lines.find(l => l.toLowerCase().includes('summary')) ||
-                 responseText.substring(0, 200),
+          responseText.substring(0, 200),
         keyPoints: lines.filter(l => l.trim().startsWith('-') || l.trim().startsWith('•'))
-                  .map(l => l.replace(/^[-•]\s*/, '').trim())
-                  .slice(0, 5),
+          .map(l => l.replace(/^[-•]\s*/, '').trim())
+          .slice(0, 5),
         tags: (responseText.match(/tags?[:\-]\s*([^\n]+)/i)?.[1] || '')
-              .split(',')
-              .map(t => t.trim())
-              .filter(t => t),
+          .split(',')
+          .map(t => t.trim())
+          .filter(t => t),
         sentiment: responseText.match(/sentiment[:\-]\s*(positive|neutral|negative)/i)?.[1] || 'neutral',
       };
     }

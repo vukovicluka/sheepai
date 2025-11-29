@@ -1,11 +1,11 @@
 # Hacker News Scraper Backend
 
-A Node.js backend server that scrapes The Hacker News, processes articles using Anthropic's Claude API, stores them in MongoDB, and provides a REST API with advanced features.
+A Node.js backend server that scrapes The Hacker News, processes articles using OpenAI API, stores them in MongoDB, and provides a REST API with advanced features.
 
 ## Features
 
 - **Web Scraping**: Automated scraping of The Hacker News using Cheerio
-- **AI Processing**: Article summarization and analysis using Anthropic Claude API
+- **AI Processing**: Article summarization and analysis using OpenAI API
 - **Automated Scheduling**: Daily article fetching using node-cron
 - **MongoDB Storage**: Persistent storage with duplicate detection
 - **REST API**: Full-featured API with pagination, filtering, search, and statistics
@@ -14,7 +14,7 @@ A Node.js backend server that scrapes The Hacker News, processes articles using 
 
 - Node.js (v18 or higher)
 - MongoDB (local, Docker, or cloud instance)
-- Anthropic API key
+- OpenAI API key
 - Docker and Docker Compose (optional, for MongoDB container)
 
 ## Installation
@@ -39,7 +39,8 @@ cp .env.example .env
 ```env
 PORT=3000
 MONGODB_URI=mongodb://localhost:27017/hacker-news-scraper
-ANTHROPIC_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_api_key_here
+OPENAI_MODEL=gpt-4
 CRON_SCHEDULE=0 9 * * *
 ```
 
@@ -200,7 +201,8 @@ backend/
 |----------|-------------|---------|
 | `PORT` | Server port | 3000 |
 | `MONGODB_URI` | MongoDB connection string | - |
-| `ANTHROPIC_API_KEY` | Anthropic API key | - |
+| `OPENAI_API_KEY` | OpenAI API key | - |
+| `OPENAI_MODEL` | OpenAI model to use (e.g., gpt-4, gpt-3.5-turbo) | gpt-4 |
 | `CRON_SCHEDULE` | Cron schedule expression | `0 9 * * *` |
 | `CATEGORY_FILTER` | Category keyword for scheduled scraping (optional) | - |
 | `LOG_LEVEL` | Logging level (error/warn/info/debug) | info |

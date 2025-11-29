@@ -3,8 +3,10 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/database.js';
 import articleRoutes from './routes/articles.js';
+import userRoutes from './routes/users.js';
 import scheduler from './services/scheduler.js';
 import logger from './utils/logger.js';
+import User from './models/User.js';
 
 // Load environment variables
 dotenv.config();
@@ -30,6 +32,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/articles', articleRoutes);
+app.use('/api/users', userRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -54,11 +57,42 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+/**
+ * Creates default user on server start if it doesn't exist
+ */
+const createDefaultUser = async () => {
+  try {
+    const defaultEmail = 'luka.vukovic@mithril.eu';
+    const defaultCategory = 'ransomware';
+
+    const existingUser = await User.findOne({ email: defaultEmail });
+
+    if (existingUser) {
+      logger.info(`Default user already exists: ${defaultEmail}`);
+      return;
+    }
+
+    const user = new User({
+      email: defaultEmail,
+      category: defaultCategory,
+    });
+
+    await user.save();
+    logger.info(`Default user created: ${defaultEmail} with category: ${defaultCategory}`);
+  } catch (error) {
+    logger.error('Error creating default user:', error.message);
+    // Don't fail server startup if user creation fails
+  }
+};
+
 // Start server
 const startServer = async () => {
   try {
     // Connect to MongoDB
     await connectDB();
+
+    // Create default user
+    await createDefaultUser();
 
     // Initialize scheduler
     scheduler.initializeScheduler();

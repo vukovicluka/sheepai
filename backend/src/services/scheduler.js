@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import logger from '../utils/logger.js';
 import scraper from './scraper.js';
 import aiProcessor from './aiProcessor.js';
+import emailService from './emailService.js';
 import Article from '../models/Article.js';
 
 /**
@@ -47,6 +48,7 @@ const fetchAndProcessArticles = async () => {
     // Store articles in database (avoid duplicates with additional check)
     let savedCount = 0;
     let skippedCount = 0;
+    const savedArticles = []; // Collect all successfully saved articles
 
     for (const articleData of processedArticles) {
       try {
@@ -63,6 +65,7 @@ const fetchAndProcessArticles = async () => {
         const article = new Article(articleData);
         await article.save();
         savedCount++;
+        savedArticles.push(articleData); // Add to saved articles list
         logger.info(`✓ Saved article: ${articleData.title}`);
       } catch (error) {
         if (error.code === 11000) {
@@ -76,6 +79,16 @@ const fetchAndProcessArticles = async () => {
     }
 
     logger.info(`Article processing complete. Saved: ${savedCount}, Skipped: ${skippedCount}`);
+
+    // Send batch email notifications after all articles are saved
+    if (savedArticles.length > 0) {
+      try {
+        await emailService.notifyUsersAboutBatchArticles(savedArticles);
+      } catch (emailError) {
+        // Don't fail the process if email fails
+        logger.error('Error sending batch email notifications:', emailError.message);
+      }
+    }
   } catch (error) {
     logger.error('Error in fetchAndProcessArticles:', error.message);
   }

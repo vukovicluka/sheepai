@@ -55,5 +55,13 @@ export const articleService = {
   },
 };
 
+export const userService = {
+  // Sign up a new user
+  signup: async (userData) => {
+    const response = await api.post('/api/users/signup', userData);
+    return response.data;
+  },
+};
+
 export default api;
 

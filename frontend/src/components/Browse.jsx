@@ -261,7 +261,7 @@ const Browse = () => {
       </div>
 
       {/* Filters */}
-      <div className="filters">
+      {/* <div className="filters">
         <div className="filter-group">
           <label htmlFor="category">Category:</label>
           <input
@@ -312,7 +312,7 @@ const Browse = () => {
             Clear Filters
           </button>
         )}
-      </div>
+      </div> */}
 
       {/* Header with stats */}
       <div className="header-section">

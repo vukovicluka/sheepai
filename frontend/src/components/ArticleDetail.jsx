@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { articleService } from '../services/api';
+import { getCredibilityColor, getCredibilityLabel, getCredibilityIcon } from '../utils/credibility';
 import './ArticleDetail.css';
 
 const ArticleDetail = () => {
@@ -96,11 +97,26 @@ const ArticleDetail = () => {
                 </span>
               </div>
             )}
-            {article.sourceUrl && (
+            {article.credibilityScore !== null && article.credibilityScore !== undefined && (
+              <div className="meta-row">
+                <span className="meta-label">Credibility:</span>
+                <span
+                  className="meta-value credibility-badge"
+                  style={{
+                    backgroundColor: getCredibilityColor(article.credibilityScore),
+                    color: '#000'
+                  }}
+                  title={getCredibilityLabel(article.credibilityScore)}
+                >
+                  {getCredibilityIcon(article.credibilityScore)} {article.credibilityScore}% - {getCredibilityLabel(article.credibilityScore)}
+                </span>
+              </div>
+            )}
+            {article.url && (
               <div className="meta-row">
                 <span className="meta-label">Source:</span>
                 <a
-                  href={article.sourceUrl}
+                  href={article.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="source-link"

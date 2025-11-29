@@ -188,9 +188,9 @@ const calculateRelevanceScore = (article, userCategory) => {
   const title = (article.title || '').toLowerCase();
   const content = (article.content || '').toLowerCase();
   const summary = (article.summary || '').toLowerCase();
-  const tags = (article.tags || []).map(t => t.toLowerCase()).join(' ');
+  const tags = (article.tags || []).map(t => t.toLowerCase().trim());
 
-  const allText = `${title} ${content} ${summary} ${tags}`;
+  const allText = `${title} ${content} ${summary} ${tags.join(' ')}`;
 
   let score = 0;
 
@@ -208,10 +208,24 @@ const calculateRelevanceScore = (article, userCategory) => {
   const contentMatches = (content.match(new RegExp(categoryLower, 'g')) || []).length;
   score += Math.min(contentMatches * 5, 20);
 
-  // Match in tags
-  if (tags.includes(categoryLower)) {
-    score += 10;
-  }
+  // Match in tags - check each tag individually
+  let tagScore = 0;
+  tags.forEach(tag => {
+    // Exact tag match (highest weight for tags)
+    if (tag === categoryLower) {
+      tagScore += 15;
+    }
+    // Tag contains the category keyword
+    else if (tag.includes(categoryLower)) {
+      tagScore += 10;
+    }
+    // Category keyword contains the tag (partial match)
+    else if (categoryLower.includes(tag) && tag.length > 2) {
+      tagScore += 5;
+    }
+  });
+  // Cap tag score at 25 to maintain balance
+  score += Math.min(tagScore, 25);
 
   // Ensure score is between 0-100
   return Math.min(Math.max(score, 0), 100);
@@ -253,9 +267,42 @@ const getSentimentIcon = (sentiment) => {
 };
 
 /**
+ * Gets color for credibility score based on neon theme
+ */
+const getCredibilityColor = (score) => {
+  if (score === null || score === undefined) return '#00ffff'; // Default cyan for unknown
+
+  if (score >= 80) return '#00ff00'; // Neon Green - Highly Credible
+  if (score >= 50) return '#ffff00'; // Neon Yellow - Moderate Credibility
+  return '#ff00ff'; // Neon Magenta - Low Credibility
+};
+
+/**
+ * Gets label for credibility score
+ */
+const getCredibilityLabel = (score) => {
+  if (score === null || score === undefined) return 'Unknown';
+
+  if (score >= 80) return 'Highly Credible';
+  if (score >= 50) return 'Moderate';
+  return 'Low Credibility';
+};
+
+/**
+ * Gets icon/emoji for credibility score
+ */
+const getCredibilityIcon = (score) => {
+  if (score === null || score === undefined) return '?';
+
+  if (score >= 80) return '✓';
+  if (score >= 50) return '~';
+  return '⚠';
+};
+
+/**
  * Sends a batch email notification to a user with multiple articles
  */
-const sendBatchArticleNotification = async (userEmail, articles, userCategory) => {
+const sendBatchArticleNotification = async (userEmail, articles, userCategory, user = null) => {
   try {
     const emailTransporter = getTransporter();
 
@@ -297,6 +344,16 @@ const sendBatchArticleNotification = async (userEmail, articles, userCategory) =
       const sentiment = article.sentiment || 'neutral';
       const sentimentColor = getSentimentColor(sentiment);
       const sentimentIcon = getSentimentIcon(sentiment);
+      const credibilityScore = article.credibilityScore;
+      const credibilityColor = credibilityScore !== null && credibilityScore !== undefined
+        ? getCredibilityColor(credibilityScore)
+        : null;
+      const credibilityLabel = credibilityScore !== null && credibilityScore !== undefined
+        ? getCredibilityLabel(credibilityScore)
+        : null;
+      const credibilityIcon = credibilityScore !== null && credibilityScore !== undefined
+        ? getCredibilityIcon(credibilityScore)
+        : null;
       const tags = article.tags || [];
 
       // Calculate relevance bar width
@@ -328,6 +385,11 @@ const sendBatchArticleNotification = async (userEmail, articles, userCategory) =
             <span style="background: ${sentimentColor}; color: #000; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; box-shadow: 0 0 8px ${sentimentColor};">
               ${sentimentIcon} ${sentiment}
             </span>
+            ${credibilityColor ? `
+              <span style="background: ${credibilityColor}; color: #000; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; box-shadow: 0 0 8px ${credibilityColor};" title="${credibilityLabel}">
+                ${credibilityIcon} ${credibilityScore}% Credible
+              </span>
+            ` : ''}
             ${tags.slice(0, 3).map(tag => `
               <span style="background: rgba(0, 255, 255, 0.15); color: #00ffff; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; border: 1px solid #00ffff; text-shadow: 0 0 3px #00ffff;">
                 #${tag}
@@ -382,6 +444,22 @@ ${index + 1}. ${articleTitle}
       articlesWithScores.reduce((sum, a) => sum + a.relevanceScore, 0) / articlesWithScores.length
     );
     const avgRelevanceColor = getRelevanceColor(avgRelevance);
+
+    // Calculate average credibility score
+    const articlesWithCredibility = articlesWithScores.filter(a => a.credibilityScore !== null && a.credibilityScore !== undefined);
+    const avgCredibility = articlesWithCredibility.length > 0
+      ? Math.round(articlesWithCredibility.reduce((sum, a) => sum + a.credibilityScore, 0) / articlesWithCredibility.length)
+      : null;
+
+    // Get user's credibility threshold for warning message
+    const userThreshold = user?.minCredibility !== null && user?.minCredibility !== undefined
+      ? user.minCredibility
+      : (parseInt(process.env.MIN_CREDIBILITY_THRESHOLD) || 70);
+
+    // Check if any articles have low credibility
+    const hasLowCredibilityArticles = articlesWithScores.some(a =>
+      a.credibilityScore !== null && a.credibilityScore !== undefined && a.credibilityScore < userThreshold
+    );
 
     const mailOptions = {
       from: `"${process.env.SMTP_FROM_NAME || 'CyberPulse'}" <${process.env.SMTP_USER}>`,
@@ -517,6 +595,10 @@ ${index + 1}. ${articleTitle}
                 <p>We found <strong style="color: #667eea;">${articleCount}</strong> new article${articleCount === 1 ? '' : 's'} matching your interest in "<strong style="color: #764ba2;">${userCategory}</strong>"!</p>
                 <p style="font-size: 13px; margin-top: 12px; color: #000;">Articles are sorted by relevance to help you prioritize your reading.</p>
                 <div class="relevance-badge">Average Relevance: ${avgRelevance}%</div>
+                ${avgCredibility !== null ? `<div class="relevance-badge" style="background: ${getCredibilityColor(avgCredibility)}; margin-top: 8px;">Average Credibility: ${avgCredibility}%</div>` : ''}
+                ${hasLowCredibilityArticles ? `<div style="background: rgba(255, 0, 255, 0.2); border: 1px solid #ff00ff; padding: 12px; border-radius: 8px; margin-top: 15px; color: #ff00ff; font-size: 13px; text-shadow: 0 0 5px #ff00ff;">
+                  <strong>⚠️ Credibility Filter Active:</strong> Only articles with credibility score ≥ ${userThreshold}% are included. Low-credibility articles have been filtered out to ensure high-quality content.
+                </div>` : ''}
               </div>
               ${articlesHTML}
             </div>
@@ -586,9 +668,21 @@ const notifyUsersAboutBatchArticles = async (articles) => {
       const categoryLower = user.category?.toLowerCase().trim();
       if (!categoryLower) continue;
 
+      // Get user's credibility threshold (use system default if not set)
+      const userThreshold = user.minCredibility !== null && user.minCredibility !== undefined
+        ? user.minCredibility
+        : (parseInt(process.env.MIN_CREDIBILITY_THRESHOLD) || 70);
+
       const matchingArticles = articles.filter(article => {
         const articleText = `${article.title || ''} ${article.content || ''}`.toLowerCase();
-        return articleText.includes(categoryLower);
+        const matchesCategory = articleText.includes(categoryLower);
+
+        // Filter by credibility threshold
+        const meetsCredibilityThreshold = article.credibilityScore === null ||
+          article.credibilityScore === undefined ||
+          article.credibilityScore >= userThreshold;
+
+        return matchesCategory && meetsCredibilityThreshold;
       });
 
       if (matchingArticles.length > 0) {
@@ -608,7 +702,7 @@ const notifyUsersAboutBatchArticles = async (articles) => {
 
     // Send batch emails to all matching users
     const emailPromises = Array.from(userArticleMap.entries()).map(([email, { user, articles: userArticles }]) =>
-      sendBatchArticleNotification(email, userArticles, user.category)
+      sendBatchArticleNotification(email, userArticles, user.category, user)
     );
 
     const results = await Promise.allSettled(emailPromises);

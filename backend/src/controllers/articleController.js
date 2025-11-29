@@ -49,6 +49,18 @@ export const getArticles = async (req, res) => {
       }
     }
 
+    // Add credibility threshold filter
+    if (req.query.minCredibility !== undefined) {
+      const minCred = parseInt(req.query.minCredibility);
+      if (!isNaN(minCred)) {
+        filter.credibilityScore = { $gte: minCred };
+      }
+    } else if (req.query.highConfidence === 'true' || req.query.highConfidence === '1') {
+      // Default to environment threshold if highConfidence is requested
+      const defaultThreshold = parseInt(process.env.MIN_CREDIBILITY_THRESHOLD) || 70;
+      filter.credibilityScore = { $gte: defaultThreshold };
+    }
+
     // Build sort object
     const sort = {};
     const sortBy = req.query.sortBy || 'publishedDate';
@@ -111,6 +123,18 @@ export const getLatestArticles = async (req, res) => {
       Object.assign(filter, buildCategoryFilter(req.query.category));
     }
 
+    // Add credibility threshold filter
+    if (req.query.minCredibility !== undefined) {
+      const minCred = parseInt(req.query.minCredibility);
+      if (!isNaN(minCred)) {
+        filter.credibilityScore = { $gte: minCred };
+      }
+    } else if (req.query.highConfidence === 'true' || req.query.highConfidence === '1') {
+      // Default to environment threshold if highConfidence is requested
+      const defaultThreshold = parseInt(process.env.MIN_CREDIBILITY_THRESHOLD) || 70;
+      filter.credibilityScore = { $gte: defaultThreshold };
+    }
+
     const articles = await Article.find(filter)
       .sort({ publishedDate: -1, createdAt: -1 })
       .limit(limit)
@@ -159,6 +183,26 @@ export const searchArticles = async (req, res) => {
           categoryFilter,
         ],
       };
+    }
+
+    // Add credibility threshold filter
+    if (req.query.minCredibility !== undefined) {
+      const minCred = parseInt(req.query.minCredibility);
+      if (!isNaN(minCred)) {
+        if (searchFilter.$and) {
+          searchFilter.$and.push({ credibilityScore: { $gte: minCred } });
+        } else {
+          searchFilter.credibilityScore = { $gte: minCred };
+        }
+      }
+    } else if (req.query.highConfidence === 'true' || req.query.highConfidence === '1') {
+      // Default to environment threshold if highConfidence is requested
+      const defaultThreshold = parseInt(process.env.MIN_CREDIBILITY_THRESHOLD) || 70;
+      if (searchFilter.$and) {
+        searchFilter.$and.push({ credibilityScore: { $gte: defaultThreshold } });
+      } else {
+        searchFilter.credibilityScore = { $gte: defaultThreshold };
+      }
     }
 
     const [articles, total] = await Promise.all([

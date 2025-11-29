@@ -54,6 +54,13 @@ const articleSchema = new mongoose.Schema(
       type: String,
       default: 'thehackernews.com',
     },
+    credibilityScore: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { articleService } from '../services/api';
 import { calculateRelevanceScore, getRelevanceColor, calculateAverageRelevance } from '../utils/relevance';
+import { getCredibilityColor, getCredibilityLabel, getCredibilityIcon } from '../utils/credibility';
 import './ArticleList.css';
 
 const ArticleList = ({ latest = false }) => {
@@ -13,6 +14,7 @@ const ArticleList = ({ latest = false }) => {
   const [category, setCategory] = useState('');
   const [tag, setTag] = useState('');
   const [tags, setTags] = useState([]);
+  const [highConfidence, setHighConfidence] = useState(true); // Default to high confidence mode
 
   useEffect(() => {
     fetchTags();
@@ -20,7 +22,7 @@ const ArticleList = ({ latest = false }) => {
 
   useEffect(() => {
     fetchArticles();
-  }, [page, category, tag, latest]);
+  }, [page, category, tag, latest, highConfidence]);
 
   const fetchTags = async () => {
     try {
@@ -40,6 +42,7 @@ const ArticleList = ({ latest = false }) => {
         limit: 10,
         ...(category && { category }),
         ...(tag && { tag }),
+        ...(highConfidence && { highConfidence: 'true' }),
       };
 
       const data = latest
@@ -139,6 +142,20 @@ const ArticleList = ({ latest = false }) => {
             ))}
           </select>
         </div>
+        <div className="filter-group">
+          <label htmlFor="highConfidence" className="checkbox-label">
+            <input
+              id="highConfidence"
+              type="checkbox"
+              checked={highConfidence}
+              onChange={(e) => {
+                setHighConfidence(e.target.checked);
+                setPage(1);
+              }}
+            />
+            <span>High Confidence Only (≥70%)</span>
+          </label>
+        </div>
         {(category || tag) && (
           <button
             className="clear-filters"
@@ -215,6 +232,18 @@ const ArticleList = ({ latest = false }) => {
                 {article.sentiment && (
                   <span className={`sentiment sentiment-${article.sentiment}`}>
                     {article.sentiment === 'positive' ? '✓' : article.sentiment === 'negative' ? '⚠' : '—'} {article.sentiment}
+                  </span>
+                )}
+                {article.credibilityScore !== null && article.credibilityScore !== undefined && (
+                  <span
+                    className="credibility-badge"
+                    style={{
+                      backgroundColor: getCredibilityColor(article.credibilityScore),
+                      color: '#000'
+                    }}
+                    title={getCredibilityLabel(article.credibilityScore)}
+                  >
+                    {getCredibilityIcon(article.credibilityScore)} {article.credibilityScore}% Credible
                   </span>
                 )}
                 {article.tags && article.tags.length > 0 && (

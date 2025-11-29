@@ -21,6 +21,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    minCredibility: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: null, // null means use system default
+    },
   },
   {
     timestamps: true,

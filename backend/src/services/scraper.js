@@ -101,6 +101,15 @@ const scrapeArticle = async (articleUrl) => {
       .replace(/\s+/g, ' ')
       .substring(0, 10000); // Limit content length
 
+    // Extract tags from span elements with class="p-tags"
+    const tags = [];
+    $('span.p-tags').each((i, element) => {
+      const tagText = $(element).text().trim();
+      if (tagText) {
+        tags.push(tagText);
+      }
+    });
+
     if (!title || !content) {
       logger.warn(`Incomplete article data for ${articleUrl}`);
       return null;
@@ -112,6 +121,7 @@ const scrapeArticle = async (articleUrl) => {
       author,
       publishedDate: publishedDate || new Date(),
       content,
+      tags,
     };
   } catch (error) {
     logger.error(`Error scraping article ${articleUrl}:`, error.message);

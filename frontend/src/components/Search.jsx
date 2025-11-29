@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { articleService } from '../services/api';
 import { calculateRelevanceScore, getRelevanceColor, calculateAverageRelevance } from '../utils/relevance';
+import { getCredibilityColor, getCredibilityLabel, getCredibilityIcon } from '../utils/credibility';
 import './Search.css';
 
 const Search = () => {
@@ -12,6 +13,7 @@ const Search = () => {
   const [pagination, setPagination] = useState(null);
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState('');
+  const [highConfidence, setHighConfidence] = useState(true); // Default to high confidence mode
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -26,6 +28,7 @@ const Search = () => {
         page: 1,
         limit: 10,
         ...(category && { category }),
+        ...(highConfidence && { highConfidence: 'true' }),
       };
 
       const data = await articleService.searchArticles(query, params);
@@ -48,6 +51,7 @@ const Search = () => {
         page: page + 1,
         limit: 10,
         ...(category && { category }),
+        ...(highConfidence && { highConfidence: 'true' }),
       };
 
       const data = await articleService.searchArticles(query, params);
@@ -117,6 +121,15 @@ const Search = () => {
             placeholder="Filter by category (optional)"
             className="category-input"
           />
+          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#00ffff' }}>
+            <input
+              type="checkbox"
+              checked={highConfidence}
+              onChange={(e) => setHighConfidence(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            <span>High Confidence Only (≥70%)</span>
+          </label>
           <button type="submit" className="search-button" disabled={loading}>
             {loading ? 'Searching...' : 'Search'}
           </button>
@@ -185,6 +198,18 @@ const Search = () => {
                     {article.sentiment && (
                       <span className={`sentiment sentiment-${article.sentiment}`}>
                         {article.sentiment === 'positive' ? '✓' : article.sentiment === 'negative' ? '⚠' : '—'} {article.sentiment}
+                      </span>
+                    )}
+                    {article.credibilityScore !== null && article.credibilityScore !== undefined && (
+                      <span
+                        className="credibility-badge"
+                        style={{
+                          backgroundColor: getCredibilityColor(article.credibilityScore),
+                          color: '#000'
+                        }}
+                        title={getCredibilityLabel(article.credibilityScore)}
+                      >
+                        {getCredibilityIcon(article.credibilityScore)} {article.credibilityScore}% Credible
                       </span>
                     )}
                     {article.tags && article.tags.length > 0 && (

@@ -280,6 +280,17 @@
   box-shadow: 0 0 8px rgba(255, 255, 0, 0.5);
 }
 
+.credibility-badge {
+  padding: 0.4rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  box-shadow: 0 0 8px currentColor;
+  display: inline-block;
+}
+
 .article-tags {
   display: flex;
   gap: 0.5rem;

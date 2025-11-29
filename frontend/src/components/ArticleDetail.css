@@ -68,6 +68,17 @@
   text-shadow: 0 0 5px #00ffff;
 }
 
+.credibility-badge {
+  padding: 0.4rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  box-shadow: 0 0 8px currentColor;
+  display: inline-block;
+}
+
 .source-link {
   color: #00ffff;
   text-decoration: none;

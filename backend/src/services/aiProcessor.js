@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import logger from '../utils/logger.js';
+import credibilityService from './credibilityService.js';
 
 // Lazy initialization of OpenAI client
 let openai = null;
@@ -20,11 +21,14 @@ const processArticle = async (article) => {
   try {
     if (!process.env.OPENAI_API_KEY) {
       logger.warn('OPENAI_API_KEY not set, skipping AI processing');
+      // Still assess credibility based on source
+      const credibilityScore = await credibilityService.assessCredibility(article).catch(() => null);
       return {
         summary: '',
         keyPoints: [],
         tags: [],
         sentiment: 'neutral',
+        credibilityScore,
       };
     }
 
@@ -48,11 +52,14 @@ Please format your response as JSON:
     const client = getOpenAIClient();
     if (!client) {
       logger.warn('OpenAI client not initialized, skipping AI processing');
+      // Still assess credibility based on source
+      const credibilityScore = await credibilityService.assessCredibility(article).catch(() => null);
       return {
         summary: '',
         keyPoints: [],
         tags: [],
         sentiment: 'neutral',
+        credibilityScore,
       };
     }
 
@@ -96,6 +103,14 @@ Please format your response as JSON:
       };
     }
 
+    // Assess credibility
+    let credibilityScore = null;
+    try {
+      credibilityScore = await credibilityService.assessCredibility(article);
+    } catch (credError) {
+      logger.warn('Error assessing credibility, continuing without score:', credError.message);
+    }
+
     return {
       summary: parsedResponse.summary || '',
       keyPoints: Array.isArray(parsedResponse.keyPoints) ? parsedResponse.keyPoints : [],
@@ -103,15 +118,23 @@ Please format your response as JSON:
       sentiment: ['positive', 'neutral', 'negative'].includes(parsedResponse.sentiment?.toLowerCase())
         ? parsedResponse.sentiment.toLowerCase()
         : 'neutral',
+      credibilityScore,
     };
   } catch (error) {
     logger.error('Error processing article with AI:', error.message);
-    // Return default values on error
+    // Return default values on error, but still try to assess credibility
+    let credibilityScore = null;
+    try {
+      credibilityScore = await credibilityService.assessCredibility(article);
+    } catch (credError) {
+      // Ignore credibility errors if main processing failed
+    }
     return {
       summary: '',
       keyPoints: [],
       tags: [],
       sentiment: 'neutral',
+      credibilityScore,
     };
   }
 };
@@ -136,12 +159,20 @@ const processArticles = async (articles) => {
     } catch (error) {
       logger.error(`Error processing article "${article.title}":`, error.message);
       // Continue with next article even if one fails
+      // Still try to assess credibility
+      let credibilityScore = null;
+      try {
+        credibilityScore = await credibilityService.assessCredibility(article);
+      } catch (credError) {
+        // Ignore credibility errors
+      }
       processedArticles.push({
         ...article,
         summary: '',
         keyPoints: [],
         tags: [],
         sentiment: 'neutral',
+        credibilityScore,
         processedAt: new Date(),
       });
     }

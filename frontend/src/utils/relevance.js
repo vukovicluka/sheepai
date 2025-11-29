@@ -9,7 +9,7 @@ export const calculateRelevanceScore = (article, category) => {
   const title = (article.title || '').toLowerCase();
   const content = (article.content || '').toLowerCase();
   const summary = (article.summary || '').toLowerCase();
-  const tags = (article.tags || []).map(t => t.toLowerCase()).join(' ');
+  const tags = (article.tags || []).map(t => t.toLowerCase().trim());
 
   let score = 0;
 
@@ -27,10 +27,24 @@ export const calculateRelevanceScore = (article, category) => {
   const contentMatches = (content.match(new RegExp(categoryLower, 'g')) || []).length;
   score += Math.min(contentMatches * 5, 20);
 
-  // Match in tags
-  if (tags.includes(categoryLower)) {
-    score += 10;
-  }
+  // Match in tags - check each tag individually
+  let tagScore = 0;
+  tags.forEach(tag => {
+    // Exact tag match (highest weight for tags)
+    if (tag === categoryLower) {
+      tagScore += 15;
+    }
+    // Tag contains the category keyword
+    else if (tag.includes(categoryLower)) {
+      tagScore += 10;
+    }
+    // Category keyword contains the tag (partial match)
+    else if (categoryLower.includes(tag) && tag.length > 2) {
+      tagScore += 5;
+    }
+  });
+  // Cap tag score at 25 to maintain balance
+  score += Math.min(tagScore, 25);
 
   // Ensure score is between 0-100
   return Math.min(Math.max(score, 0), 100);

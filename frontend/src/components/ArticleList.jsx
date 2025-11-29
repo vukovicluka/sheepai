@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { articleService } from '../services/api';
+import { calculateRelevanceScore, getRelevanceColor, calculateAverageRelevance } from '../utils/relevance';
 import './ArticleList.css';
 
 const ArticleList = ({ latest = false }) => {
@@ -78,6 +79,34 @@ const ArticleList = ({ latest = false }) => {
     });
   };
 
+  // Calculate relevance scores and sort articles when category filter is active
+  const articlesWithRelevance = useMemo(() => {
+    if (!category || category.trim() === '') {
+      return articles.map(article => ({ ...article, relevanceScore: null }));
+    }
+
+    const articlesWithScores = articles.map(article => {
+      const score = calculateRelevanceScore(article, category);
+      return {
+        ...article,
+        relevanceScore: score,
+      };
+    });
+
+    // Sort by relevance (highest first), then by date
+    return articlesWithScores.sort((a, b) => {
+      if (b.relevanceScore !== a.relevanceScore) {
+        return (b.relevanceScore || 0) - (a.relevanceScore || 0);
+      }
+      return new Date(b.publishedDate || 0) - new Date(a.publishedDate || 0);
+    });
+  }, [articles, category]);
+
+  // Calculate average relevance
+  const avgRelevance = useMemo(() => {
+    return calculateAverageRelevance(articles, category);
+  }, [articles, category]);
+
   if (loading && articles.length === 0) {
     return <div className="loading">Loading articles...</div>;
   }
@@ -124,45 +153,87 @@ const ArticleList = ({ latest = false }) => {
         )}
       </div>
 
-      <h2>{latest ? 'Latest Articles' : 'All Articles'}</h2>
+      <div className="header-section">
+        <h2>{latest ? 'Latest Articles' : 'All Articles'}</h2>
+        {category && avgRelevance !== null && (
+          <div className="avg-relevance-badge" style={{ '--relevance-color': getRelevanceColor(avgRelevance) }}>
+            Avg Relevance: {avgRelevance}%
+          </div>
+        )}
+        {!category && (
+          <div className="relevance-hint">
+            💡 Enter a category to see relevance scores
+          </div>
+        )}
+      </div>
 
       {error && <div className="error-message">{error}</div>}
 
       <div className="articles-grid">
-        {articles.map((article) => (
-          <Link
-            key={article._id}
-            to={`/article/${article._id}`}
-            className="article-card"
-          >
-            <h3 className="article-title">{article.title || 'Untitled'}</h3>
-            {article.summary && (
-              <p className="article-summary">{article.summary}</p>
-            )}
-            <div className="article-meta">
-              <span className="article-date">
-                {formatDate(article.publishedDate)}
-              </span>
-              {article.category && (
-                <span className="article-category">{article.category}</span>
-              )}
-              {article.sentiment && (
-                <span className={`sentiment sentiment-${article.sentiment}`}>
-                  {article.sentiment}
-                </span>
-              )}
-            </div>
-            {article.tags && article.tags.length > 0 && (
-              <div className="article-tags">
-                {article.tags.slice(0, 3).map((tag) => (
-                  <span key={tag} className="tag">
-                    {tag}
-                  </span>
-                ))}
+        {articlesWithRelevance.map((article) => {
+          const relevanceScore = article.relevanceScore;
+          const relevanceColor = relevanceScore !== null ? getRelevanceColor(relevanceScore) : '#00ffff';
+
+          return (
+            <Link
+              key={article._id}
+              to={`/article/${article._id}`}
+              className="article-card"
+              style={relevanceColor ? { '--relevance-color': relevanceColor } : {}}
+            >
+              <div className="article-header-row">
+                <div className="article-header-content">
+                  <h3 className="article-title">{article.title || 'Untitled'}</h3>
+                  <div className="article-meta">
+                    <span className="article-date">
+                      📅 {formatDate(article.publishedDate)}
+                    </span>
+                    {article.author && (
+                      <span className="article-author">✍️ {article.author}</span>
+                    )}
+                  </div>
+                </div>
+                {relevanceScore !== null ? (
+                  <div className="relevance-indicator">
+                    <div className="relevance-badge" style={{ backgroundColor: relevanceColor, color: '#000' }}>
+                      {relevanceScore}% Match
+                    </div>
+                    <div className="relevance-bar">
+                      <div
+                        className="relevance-bar-fill"
+                        style={{
+                          width: `${relevanceScore}%`,
+                          backgroundColor: relevanceColor
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            )}
-          </Link>
-        ))}
+
+              <div className="article-badges">
+                {article.sentiment && (
+                  <span className={`sentiment sentiment-${article.sentiment}`}>
+                    {article.sentiment === 'positive' ? '✓' : article.sentiment === 'negative' ? '⚠' : '—'} {article.sentiment}
+                  </span>
+                )}
+                {article.tags && article.tags.length > 0 && (
+                  <>
+                    {article.tags.slice(0, 3).map((tag) => (
+                      <span key={tag} className="tag">
+                        #{tag}
+                      </span>
+                    ))}
+                  </>
+                )}
+              </div>
+
+              {article.summary && (
+                <p className="article-summary">{article.summary}</p>
+              )}
+            </Link>
+          );
+        })}
       </div>
 
       {!latest && pagination && pagination.pages > 1 && (

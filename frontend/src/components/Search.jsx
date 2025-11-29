@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { articleService } from '../services/api';
+import { calculateRelevanceScore, getRelevanceColor, calculateAverageRelevance } from '../utils/relevance';
 import './Search.css';
 
 const Search = () => {
@@ -70,6 +71,32 @@ const Search = () => {
     });
   };
 
+  // Calculate relevance scores based on search query or category
+  const resultsWithRelevance = useMemo(() => {
+    if (results.length === 0) return [];
+
+    const relevanceCategory = category || query;
+    if (!relevanceCategory || relevanceCategory.trim() === '') {
+      return results.map(article => ({ ...article, relevanceScore: null }));
+    }
+
+    const articlesWithScores = results.map(article => ({
+      ...article,
+      relevanceScore: calculateRelevanceScore(article, relevanceCategory),
+    }));
+
+    // Sort by relevance (highest first)
+    return articlesWithScores.sort((a, b) => {
+      return (b.relevanceScore || 0) - (a.relevanceScore || 0);
+    });
+  }, [results, category, query]);
+
+  // Calculate average relevance
+  const avgRelevance = useMemo(() => {
+    const relevanceCategory = category || query;
+    return calculateAverageRelevance(results, relevanceCategory);
+  }, [results, category, query]);
+
   return (
     <div className="search-container">
       <h2>Search Articles</h2>
@@ -105,43 +132,78 @@ const Search = () => {
               Found {pagination?.total || results.length} result
               {pagination?.total !== 1 ? 's' : ''} for "{query}"
             </p>
+            {(category || query) && avgRelevance !== null && (
+              <div className="avg-relevance-badge" style={{ '--relevance-color': getRelevanceColor(avgRelevance) }}>
+                Avg Relevance: {avgRelevance}%
+              </div>
+            )}
           </div>
 
           <div className="articles-grid">
-            {results.map((article) => (
-              <Link
-                key={article._id}
-                to={`/article/${article._id}`}
-                className="article-card"
-              >
-                <h3 className="article-title">{article.title || 'Untitled'}</h3>
-                {article.summary && (
-                  <p className="article-summary">{article.summary}</p>
-                )}
-                <div className="article-meta">
-                  <span className="article-date">
-                    {formatDate(article.publishedDate)}
-                  </span>
-                  {article.category && (
-                    <span className="article-category">{article.category}</span>
-                  )}
-                  {article.sentiment && (
-                    <span className={`sentiment sentiment-${article.sentiment}`}>
-                      {article.sentiment}
-                    </span>
-                  )}
-                </div>
-                {article.tags && article.tags.length > 0 && (
-                  <div className="article-tags">
-                    {article.tags.slice(0, 3).map((tag) => (
-                      <span key={tag} className="tag">
-                        {tag}
-                      </span>
-                    ))}
+            {resultsWithRelevance.map((article) => {
+              const relevanceScore = article.relevanceScore;
+              const relevanceColor = relevanceScore !== null ? getRelevanceColor(relevanceScore) : null;
+
+              return (
+                <Link
+                  key={article._id}
+                  to={`/article/${article._id}`}
+                  className="article-card"
+                  style={relevanceColor ? { '--relevance-color': relevanceColor } : {}}
+                >
+                  <div className="article-header-row">
+                    <div className="article-header-content">
+                      <h3 className="article-title">{article.title || 'Untitled'}</h3>
+                      <div className="article-meta">
+                        <span className="article-date">
+                          📅 {formatDate(article.publishedDate)}
+                        </span>
+                        {article.author && (
+                          <span className="article-author">✍️ {article.author}</span>
+                        )}
+                      </div>
+                    </div>
+                    {relevanceScore !== null && (
+                      <div className="relevance-indicator">
+                        <div className="relevance-badge" style={{ backgroundColor: relevanceColor, color: '#000' }}>
+                          {relevanceScore}% Match
+                        </div>
+                        <div className="relevance-bar">
+                          <div
+                            className="relevance-bar-fill"
+                            style={{
+                              width: `${relevanceScore}%`,
+                              backgroundColor: relevanceColor
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </Link>
-            ))}
+
+                  <div className="article-badges">
+                    {article.sentiment && (
+                      <span className={`sentiment sentiment-${article.sentiment}`}>
+                        {article.sentiment === 'positive' ? '✓' : article.sentiment === 'negative' ? '⚠' : '—'} {article.sentiment}
+                      </span>
+                    )}
+                    {article.tags && article.tags.length > 0 && (
+                      <>
+                        {article.tags.slice(0, 3).map((tag) => (
+                          <span key={tag} className="tag">
+                            #{tag}
+                          </span>
+                        ))}
+                      </>
+                    )}
+                  </div>
+
+                  {article.summary && (
+                    <p className="article-summary">{article.summary}</p>
+                  )}
+                </Link>
+              );
+            })}
           </div>
 
           {pagination && page < pagination.pages && (

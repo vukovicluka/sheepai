@@ -7,9 +7,10 @@
 }
 
 .signup-card {
-  background: white;
+  background: rgba(26, 0, 51, 0.8);
+  border: 2px solid #00ffff;
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
   padding: 2.5rem;
   max-width: 500px;
   width: 100%;
@@ -23,18 +24,18 @@
 .signup-header h2 {
   font-size: 2rem;
   font-weight: 700;
-  color: #333;
+  color: #00ffff;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+  letter-spacing: 2px;
 }
 
 .signup-header p {
-  color: #666;
+  color: #00ffff;
   font-size: 0.95rem;
   line-height: 1.6;
+  opacity: 0.9;
+  text-shadow: 0 0 5px #00ffff;
 }
 
 .signup-form {
@@ -51,36 +52,42 @@
 
 .form-group label {
   font-weight: 600;
-  color: #333;
+  color: #00ffff;
   font-size: 0.95rem;
+  text-shadow: 0 0 5px #00ffff;
 }
 
 .required {
-  color: #f44336;
+  color: #ff00ff;
+  text-shadow: 0 0 5px #ff00ff;
 }
 
 .form-group input {
   padding: 0.875rem;
-  border: 2px solid #e0e0e0;
+  border: 2px solid #00ffff;
+  background: rgba(10, 10, 10, 0.8);
+  color: #00ffff;
   border-radius: 8px;
   font-size: 1rem;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.3s ease;
   font-family: inherit;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #ff00ff;
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
 }
 
 .form-group input.input-error {
-  border-color: #f44336;
+  border-color: #ff00ff;
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
 }
 
 .form-group input:disabled {
-  background-color: #f5f5f5;
+  background-color: rgba(255, 255, 255, 0.1);
   cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .error-text {
@@ -97,21 +104,23 @@
 }
 
 .submit-button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, #00ffff 0%, #ff00ff 100%);
+  color: #000;
   border: none;
   padding: 1rem 2rem;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
   margin-top: 0.5rem;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+  text-shadow: none;
 }
 
 .submit-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.8), 0 0 40px rgba(255, 0, 255, 0.5);
 }
 
 .submit-button:disabled {
@@ -121,19 +130,20 @@
 }
 
 .success-message {
-  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-  border: 2px solid #4caf50;
+  background: rgba(0, 255, 0, 0.1);
+  border: 2px solid #00ff00;
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
   display: flex;
   gap: 1rem;
   align-items: flex-start;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
 }
 
 .success-icon {
-  background: #4caf50;
-  color: white;
+  background: #00ff00;
+  color: #000;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -143,20 +153,23 @@
   font-weight: bold;
   font-size: 1.2rem;
   flex-shrink: 0;
+  box-shadow: 0 0 15px #00ff00;
 }
 
 .success-message strong {
   display: block;
-  color: #2e7d32;
+  color: #00ff00;
   font-size: 1.1rem;
   margin-bottom: 0.5rem;
+  text-shadow: 0 0 10px #00ff00;
 }
 
 .success-message p {
-  color: #1b5e20;
+  color: #00ff00;
   margin: 0.25rem 0;
   font-size: 0.95rem;
   line-height: 1.6;
+  opacity: 0.9;
 }
 
 .redirect-message {
@@ -166,12 +179,14 @@
 }
 
 .error-message {
-  background: #ffebee;
-  border: 2px solid #f44336;
+  background: rgba(255, 0, 255, 0.1);
+  border: 2px solid #ff00ff;
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1.5rem;
-  color: #c62828;
+  color: #ff00ff;
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
+  text-shadow: 0 0 5px #ff00ff;
 }
 
 .error-message strong {
@@ -187,14 +202,20 @@
 }
 
 .signup-footer p {
-  color: #666;
+  color: #00ffff;
   font-size: 0.9rem;
+  opacity: 0.9;
 }
 
 .signup-footer a {
-  color: #667eea;
+  color: #00ffff;
   text-decoration: none;
   font-weight: 500;
+  text-shadow: 0 0 5px #00ffff;
+}
+
+.signup-footer a:hover {
+  text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
 }
 
 .signup-footer a:hover {

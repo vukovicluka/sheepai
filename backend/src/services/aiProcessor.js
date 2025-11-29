@@ -56,7 +56,7 @@ Please format your response as JSON:
       };
     }
 
-    const model = process.env.OPENAI_MODEL || 'gpt-4';
+    const model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
     const response = await client.chat.completions.create({
       model: model,
       max_tokens: 1024,

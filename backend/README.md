@@ -40,7 +40,7 @@ cp .env.example .env
 PORT=3000
 MONGODB_URI=mongodb://localhost:27017/hacker-news-scraper
 OPENAI_API_KEY=your_api_key_here
-OPENAI_MODEL=gpt-4
+OPENAI_MODEL=gpt-3.5-turbo
 CRON_SCHEDULE=0 9 * * *
 ```
 
@@ -202,7 +202,7 @@ backend/
 | `PORT` | Server port | 3000 |
 | `MONGODB_URI` | MongoDB connection string | - |
 | `OPENAI_API_KEY` | OpenAI API key | - |
-| `OPENAI_MODEL` | OpenAI model to use (e.g., gpt-4, gpt-3.5-turbo) | gpt-4 |
+| `OPENAI_MODEL` | OpenAI model to use (e.g., gpt-4, gpt-3.5-turbo, gpt-4-turbo) | gpt-3.5-turbo |
 | `CRON_SCHEDULE` | Cron schedule expression | `0 9 * * *` |
 | `CATEGORY_FILTER` | Category keyword for scheduled scraping (optional) | - |
 | `LOG_LEVEL` | Logging level (error/warn/info/debug) | info |

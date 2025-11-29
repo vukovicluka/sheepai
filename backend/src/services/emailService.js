@@ -51,7 +51,7 @@ const sendArticleNotification = async (userEmail, article) => {
       : 'Recently';
 
     const mailOptions = {
-      from: `"${process.env.SMTP_FROM_NAME || 'SheepAI'}" <${process.env.SMTP_USER}>`,
+      from: `"${process.env.SMTP_FROM_NAME || 'CyberPulse'}" <${process.env.SMTP_USER}>`,
       to: userEmail,
       subject: `New Article: ${articleTitle}`,
       html: `
@@ -101,7 +101,7 @@ const sendArticleNotification = async (userEmail, article) => {
             .button {
               display: inline-block;
               background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
+              color: white !important;
               padding: 12px 24px;
               text-decoration: none;
               border-radius: 6px;
@@ -137,10 +137,10 @@ const sendArticleNotification = async (userEmail, article) => {
               ${articleSummary}
             </div>
 
-            <a href="${articleUrl}" class="button" style="color: white;">Read Full Article</a>
+            <a href="${articleUrl}" class="button" style="color: white !important;">Read Full Article</a>
 
             <div class="footer">
-              <p>This is an automated notification from SheepAI.</p>
+              <p>This is an automated notification from CyberPulse.</p>
               <p>You are receiving this because you subscribed to articles in this category.</p>
             </div>
           </div>
@@ -163,7 +163,7 @@ ${articleSummary}
 Read the full article: ${articleUrl}
 
 ---
-This is an automated notification from SheepAI.
+This is an automated notification from CyberPulse.
 You are receiving this because you subscribed to articles in this category.
       `,
     };
@@ -303,53 +303,53 @@ const sendBatchArticleNotification = async (userEmail, articles, userCategory) =
       const relevanceBarWidth = relevanceScore;
 
       return `
-        <div class="article-item" style="background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 5px solid ${relevanceColor};">
+        <div class="article-item" style="background: rgba(26, 0, 51, 0.6); padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); border: 1px solid ${relevanceColor}; border-left: 5px solid ${relevanceColor};">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
             <div style="flex: 1; min-width: 200px;">
-              <h3 class="article-title" style="font-size: 20px; font-weight: bold; color: #333; margin: 0 0 8px 0; line-height: 1.3;">
+              <h3 class="article-title" style="font-size: 20px; font-weight: bold; color: #00ffff; margin: 0 0 8px 0; line-height: 1.3; text-shadow: 0 0 5px #00ffff;">
                 ${articleTitle}
               </h3>
-              <div class="article-meta" style="color: #666; font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap;">
+              <div class="article-meta" style="color: #00ffff; font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; opacity: 0.9;">
                 <span>📅 ${publishedDate}</span>
                 ${article.author ? `<span>✍️ ${article.author}</span>` : ''}
               </div>
             </div>
             <div style="text-align: right;">
-              <div style="background: ${relevanceColor}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px; display: inline-block;">
+              <div style="background: ${relevanceColor}; color: #000; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px; display: inline-block; box-shadow: 0 0 10px ${relevanceColor};">
                 ${relevanceScore}% Match
               </div>
-              <div style="width: 80px; height: 4px; background: #e0e0e0; border-radius: 2px; overflow: hidden;">
-                <div style="width: ${relevanceBarWidth}%; height: 100%; background: ${relevanceColor}; transition: width 0.3s;"></div>
+              <div style="width: 80px; height: 4px; background: rgba(0, 255, 255, 0.2); border-radius: 2px; overflow: hidden;">
+                <div style="width: ${relevanceBarWidth}%; height: 100%; background: ${relevanceColor}; transition: width 0.3s; box-shadow: 0 0 5px ${relevanceColor};"></div>
               </div>
             </div>
           </div>
 
           <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
-            <span style="background: ${sentimentColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase;">
+            <span style="background: ${sentimentColor}; color: #000; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; box-shadow: 0 0 8px ${sentimentColor};">
               ${sentimentIcon} ${sentiment}
             </span>
             ${tags.slice(0, 3).map(tag => `
-              <span style="background: #e3f2fd; color: #1976d2; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">
+              <span style="background: rgba(0, 255, 255, 0.15); color: #00ffff; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; border: 1px solid #00ffff; text-shadow: 0 0 3px #00ffff;">
                 #${tag}
               </span>
             `).join('')}
           </div>
 
-          <div class="article-summary" style="background: linear-gradient(to right, #f9f9f9 0%, #ffffff 100%); padding: 15px; border-radius: 6px; margin: 12px 0; border-left: 3px solid ${relevanceColor};">
-            <strong style="color: #555; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Summary:</strong>
-            <p style="margin: 8px 0 0 0; color: #444; line-height: 1.6; font-size: 14px;">${articleSummary}</p>
+          <div class="article-summary" style="background: rgba(0, 255, 255, 0.05); padding: 15px; border-radius: 6px; margin: 12px 0; border-left: 3px solid ${relevanceColor}; border: 1px solid rgba(0, 255, 255, 0.3);">
+            <strong style="color: #00ffff; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; text-shadow: 0 0 5px #00ffff;">Summary:</strong>
+            <p style="margin: 8px 0 0 0; color: #00ffff; line-height: 1.6; font-size: 14px; opacity: 0.9;">${articleSummary}</p>
           </div>
 
           ${article.keyPoints && article.keyPoints.length > 0 ? `
             <div style="margin: 12px 0;">
-              <strong style="color: #555; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Key Points:</strong>
-              <ul style="margin: 8px 0 0 20px; padding: 0; color: #444; font-size: 13px; line-height: 1.8;">
+              <strong style="color: #00ffff; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; text-shadow: 0 0 5px #00ffff;">Key Points:</strong>
+              <ul style="margin: 8px 0 0 20px; padding: 0; color: #00ffff; font-size: 13px; line-height: 1.8; opacity: 0.9;">
                 ${article.keyPoints.slice(0, 3).map(point => `<li style="margin-bottom: 4px;">${point}</li>`).join('')}
               </ul>
             </div>
           ` : ''}
 
-          <a href="${articleUrl}" class="button" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 12px; font-size: 14px; box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);">
+          <a href="${articleUrl}" class="button" style="display: inline-block; background: linear-gradient(135deg, #00ffff 0%, #ff00ff 100%); color: #fff !important; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 12px; font-size: 14px; box-shadow: 0 0 15px rgba(0, 255, 255, 0.5); text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);">
             Read Full Article →
           </a>
         </div>
@@ -384,7 +384,7 @@ ${index + 1}. ${articleTitle}
     const avgRelevanceColor = getRelevanceColor(avgRelevance);
 
     const mailOptions = {
-      from: `"${process.env.SMTP_FROM_NAME || 'SheepAI'}" <${process.env.SMTP_USER}>`,
+      from: `"${process.env.SMTP_FROM_NAME || 'CyberPulse'}" <${process.env.SMTP_USER}>`,
       to: userEmail,
       subject: subject,
       html: `
@@ -397,29 +397,34 @@ ${index + 1}. ${articleTitle}
             body {
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
               line-height: 1.6;
-              color: #333;
+              color: #00ffff;
               max-width: 650px;
               margin: 0 auto;
               padding: 0;
-              background-color: #f5f5f5;
+              background-color: #0a0a0a;
             }
             .container {
-              background: white;
+              background: linear-gradient(135deg, #0a0a0a 0%, #1a0033 100%);
               margin: 20px auto;
               border-radius: 12px;
               overflow: hidden;
-              box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+              box-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
+              border: 2px solid #00ffff;
             }
             .header {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
+              background: linear-gradient(135deg, #0a0a0a 0%, #1a0033 100%);
+              color: #00ffff;
               padding: 30px 20px;
               text-align: center;
+              border-bottom: 2px solid #00ffff;
+              box-shadow: 0 5px 20px rgba(0, 255, 255, 0.3);
             }
             .header h1 {
               margin: 0 0 10px 0;
               font-size: 28px;
               font-weight: 700;
+              text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+              letter-spacing: 2px;
             }
             .header-stats {
               display: flex;
@@ -429,32 +434,37 @@ ${index + 1}. ${articleTitle}
               flex-wrap: wrap;
             }
             .stat-item {
-              background: rgba(255,255,255,0.2);
+              background: rgba(0, 255, 255, 0.1);
+              border: 1px solid #00ffff;
               padding: 8px 16px;
               border-radius: 20px;
               font-size: 13px;
               font-weight: 600;
+              text-shadow: 0 0 5px #00ffff;
+              box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
             }
             .content {
               padding: 30px 20px;
-              background: #fafafa;
+              background: #0a0a0a;
             }
             .intro {
-              background: white;
+              background: rgba(26, 0, 51, 0.6);
               padding: 20px;
               border-radius: 8px;
               margin-bottom: 25px;
               border-left: 4px solid ${avgRelevanceColor};
-              box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+              border: 1px solid #00ffff;
+              box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
             }
             .intro h2 {
               margin: 0 0 10px 0;
               font-size: 20px;
-              color: #333;
+              color: #00ffff;
+              text-shadow: 0 0 10px #00ffff;
             }
             .intro p {
               margin: 8px 0;
-              color: #666;
+              color: #00ffff;
               font-size: 14px;
             }
             .relevance-badge {
@@ -468,15 +478,17 @@ ${index + 1}. ${articleTitle}
               margin-top: 10px;
             }
             .footer {
-              background: #f9f9f9;
+              background: rgba(26, 0, 51, 0.8);
               padding: 20px;
               text-align: center;
-              border-top: 1px solid #e0e0e0;
+              border-top: 2px solid #00ffff;
+              box-shadow: 0 -5px 20px rgba(0, 255, 255, 0.2);
             }
             .footer p {
               margin: 5px 0;
-              color: #888;
+              color: #00ffff;
               font-size: 12px;
+              text-shadow: 0 0 5px #00ffff;
             }
             @media only screen and (max-width: 600px) {
               body {
@@ -503,13 +515,13 @@ ${index + 1}. ${articleTitle}
               <div class="intro">
                 <h2>Hello! 👋</h2>
                 <p>We found <strong style="color: #667eea;">${articleCount}</strong> new article${articleCount === 1 ? '' : 's'} matching your interest in "<strong style="color: #764ba2;">${userCategory}</strong>"!</p>
-                <p style="font-size: 13px; margin-top: 12px;">Articles are sorted by relevance to help you prioritize your reading.</p>
+                <p style="font-size: 13px; margin-top: 12px; color: #000;">Articles are sorted by relevance to help you prioritize your reading.</p>
                 <div class="relevance-badge">Average Relevance: ${avgRelevance}%</div>
               </div>
               ${articlesHTML}
             </div>
             <div class="footer">
-              <p><strong>SheepAI</strong> - Automated Article Discovery</p>
+              <p><strong>CyberPulse</strong> - Automated Article Discovery</p>
               <p>You're receiving this because you subscribed to articles in the "<strong>${userCategory}</strong>" category.</p>
               <p style="margin-top: 10px; font-size: 11px; color: #aaa;">Articles sorted by relevance score • Color coding indicates match quality</p>
             </div>
@@ -527,7 +539,7 @@ We found ${articleCount} new article${articleCount === 1 ? '' : 's'} matching yo
 ${articlesText}
 
 ---
-This is an automated notification from SheepAI.
+This is an automated notification from CyberPulse.
 You are receiving this because you subscribed to articles in the "${userCategory}" category.
       `,
     };

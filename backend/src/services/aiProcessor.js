@@ -1,0 +1,137 @@
+import Anthropic from '@anthropic-ai/sdk';
+import logger from '../utils/logger.js';
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+/**
+ * Processes an article through Anthropic Claude API
+ */
+const processArticle = async (article) => {
+  try {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      logger.warn('ANTHROPIC_API_KEY not set, skipping AI processing');
+      return {
+        summary: '',
+        keyPoints: [],
+        tags: [],
+        sentiment: 'neutral',
+      };
+    }
+
+    const prompt = `Please analyze the following article and provide:
+1. A concise summary (2-3 sentences)
+2. 3-5 key points as a bulleted list
+3. Relevant tags/categories (comma-separated)
+4. Sentiment analysis (positive, neutral, or negative)
+
+Article Title: ${article.title}
+Article Content: ${article.content.substring(0, 4000)}
+
+Please format your response as JSON:
+{
+  "summary": "summary text here",
+  "keyPoints": ["point 1", "point 2", "point 3"],
+  "tags": ["tag1", "tag2", "tag3"],
+  "sentiment": "positive|neutral|negative"
+}`;
+
+    const message = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1024,
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+    });
+
+    const responseText = message.content[0].text;
+
+    // Try to parse JSON from the response
+    let parsedResponse;
+    try {
+      // Extract JSON from markdown code blocks if present
+      const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) ||
+                       responseText.match(/```\s*([\s\S]*?)\s*```/);
+      const jsonText = jsonMatch ? jsonMatch[1] : responseText;
+      parsedResponse = JSON.parse(jsonText);
+    } catch (parseError) {
+      // Fallback: try to extract information from text
+      logger.warn('Failed to parse JSON response, using fallback parsing');
+      const lines = responseText.split('\n');
+      parsedResponse = {
+        summary: lines.find(l => l.toLowerCase().includes('summary')) ||
+                 responseText.substring(0, 200),
+        keyPoints: lines.filter(l => l.trim().startsWith('-') || l.trim().startsWith('•'))
+                  .map(l => l.replace(/^[-•]\s*/, '').trim())
+                  .slice(0, 5),
+        tags: (responseText.match(/tags?[:\-]\s*([^\n]+)/i)?.[1] || '')
+              .split(',')
+              .map(t => t.trim())
+              .filter(t => t),
+        sentiment: responseText.match(/sentiment[:\-]\s*(positive|neutral|negative)/i)?.[1] || 'neutral',
+      };
+    }
+
+    return {
+      summary: parsedResponse.summary || '',
+      keyPoints: Array.isArray(parsedResponse.keyPoints) ? parsedResponse.keyPoints : [],
+      tags: Array.isArray(parsedResponse.tags) ? parsedResponse.tags : [],
+      sentiment: ['positive', 'neutral', 'negative'].includes(parsedResponse.sentiment?.toLowerCase())
+        ? parsedResponse.sentiment.toLowerCase()
+        : 'neutral',
+    };
+  } catch (error) {
+    logger.error('Error processing article with AI:', error.message);
+    // Return default values on error
+    return {
+      summary: '',
+      keyPoints: [],
+      tags: [],
+      sentiment: 'neutral',
+    };
+  }
+};
+
+/**
+ * Processes multiple articles with rate limiting
+ */
+const processArticles = async (articles) => {
+  const processedArticles = [];
+
+  for (const article of articles) {
+    try {
+      const aiData = await processArticle(article);
+      processedArticles.push({
+        ...article,
+        ...aiData,
+        processedAt: new Date(),
+      });
+
+      // Rate limiting: wait 1 second between requests
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      logger.error(`Error processing article "${article.title}":`, error.message);
+      // Continue with next article even if one fails
+      processedArticles.push({
+        ...article,
+        summary: '',
+        keyPoints: [],
+        tags: [],
+        sentiment: 'neutral',
+        processedAt: new Date(),
+      });
+    }
+  }
+
+  return processedArticles;
+};
+
+export default {
+  processArticle,
+  processArticles,
+};
+
